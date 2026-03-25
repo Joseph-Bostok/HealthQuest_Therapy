@@ -1,0 +1,110 @@
+import SwiftUI
+
+struct LoginView: View {
+    @State private var email = ""
+    @State private var password = ""
+    @State private var showPassword = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color("AppBackground")
+                    .ignoresSafeArea()
+
+                VStack {
+                    Spacer()
+
+                    VStack(spacing: 16) {
+                        Image("AppLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 110, height: 110)
+
+                        Text("Welcome Back")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(Color("AccentColor"))
+
+                        Text("Log in to continue")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    VStack(spacing: 16) {
+                        TextField("Email", text: $email)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color.white.opacity(0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                        Group {
+                            if showPassword {
+                                TextField("Password", text: $password)
+                            } else {
+                                SecureField("Password", text: $password)
+                            }
+                        }
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .padding()
+                        .background(Color.white.opacity(0.9))
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+
+                        HStack {
+                            Button(showPassword ? "Hide Password" : "Show Password") {
+                                showPassword.toggle()
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Color("AccentColor"))
+
+                            Spacer()
+
+                            Button("Forgot Password?") {
+                                print("Forgot password tapped")
+                            }
+                            .font(.footnote)
+                            .foregroundStyle(Color("AccentColor"))
+                        }
+
+                        Button {
+                            print("Login tapped with email: \(email)")
+                        } label: {
+                            Text("Log In")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+
+                        Button {
+                            print("Create account tapped")
+                        } label: {
+                            Text("Create Account")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .foregroundStyle(Color("AccentColor"))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color("AccentColor"), lineWidth: 1.5)
+                                )
+                        }
+                    }
+                    .padding(.horizontal, 24)
+
+                    Spacer()
+                }
+                .padding(.vertical)
+            }
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+}
+
+#Preview {
+    LoginView()
+}
