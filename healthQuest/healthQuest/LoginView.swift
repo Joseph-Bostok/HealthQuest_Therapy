@@ -3,7 +3,6 @@ import SwiftUI
 struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
-    @State private var showPassword = false
 
     var body: some View {
         NavigationStack {
@@ -18,7 +17,7 @@ struct LoginView: View {
                         Image("AppLogo")
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 110, height: 110)
+                            .frame(width: 140, height: 140)
 
                         Text("Welcome Back")
                             .font(.largeTitle.bold())
@@ -39,26 +38,15 @@ struct LoginView: View {
                             .background(Color.white.opacity(0.9))
                             .clipShape(RoundedRectangle(cornerRadius: 14))
 
-                        Group {
-                            if showPassword {
-                                TextField("Password", text: $password)
-                            } else {
-                                SecureField("Password", text: $password)
-                            }
-                        }
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding()
-                        .background(Color.white.opacity(0.9))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                       
+                        TextField("Password", text: $password)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .padding()
+                            .background(Color.white.opacity(0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
 
                         HStack {
-                            Button(showPassword ? "Hide Password" : "Show Password") {
-                                showPassword.toggle()
-                            }
-                            .font(.footnote)
-                            .foregroundStyle(Color("AccentColor"))
-
                             Spacer()
 
                             Button("Forgot Password?") {
@@ -80,8 +68,8 @@ struct LoginView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
 
-                        Button {
-                            print("Create account tapped")
+                        NavigationLink {
+                            SignUpView()
                         } label: {
                             Text("Create Account")
                                 .fontWeight(.semibold)
@@ -108,3 +96,5 @@ struct LoginView: View {
 #Preview {
     LoginView()
 }
+
+//ChatGPT 5.3 used to help with generating and organizing some basic UI elements

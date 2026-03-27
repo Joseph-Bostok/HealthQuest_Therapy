@@ -30,3 +30,5 @@ struct SplashView: View {
 #Preview {
     SplashView()
 }
+
+//ChatGPT 5.3 used to help with generating and organizing some basic UI elements

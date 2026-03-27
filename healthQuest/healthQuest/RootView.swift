@@ -13,7 +13,7 @@ struct RootView: View {
     var body: some View {
         ZStack {
             LoginView()
-                .opacity(showSplash ? 0 : 1)
+                .opacity(showSplash ? 0 : 4)
 
             if showSplash {
                 SplashView()
@@ -37,3 +37,5 @@ struct RootView: View {
 #Preview {
     RootView()
 }
+
+//ChatGPT 5.3 used to help with generating and organizing some basic UI elements
