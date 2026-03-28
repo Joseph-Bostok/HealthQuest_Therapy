@@ -5,14 +5,19 @@
 //  Created by Lauren Simineau on 3/27/26.
 //
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct SignUpView: View {
+    //helps open patient or therapist sign up
+    let selectedRole: UserRole
+    
     @State private var email = ""
     @State private var password = ""
-    @State private var birthdate = ""
+    @State private var birthdate = Date()
     @State private var firstName = ""
     @State private var lastName = ""
-    @State private var therapistID = ""
+    @State private var medicalLicenseNum = ""
 
 
     var body: some View {
@@ -73,19 +78,19 @@ struct SignUpView: View {
                                 .background(Color.white.opacity(0.9))
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             
-                            TextField("Birthdate", text: $birthdate)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            if selectedRole == .patient {
+                                DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
+                                    .datePickerStyle(.compact)
+                            }
                             
-                            TextField("Therapist ID", text: $therapistID)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            if selectedRole == .therapist {
+                                TextField("Medical License #", text: $medicalLicenseNum)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding()
+                                    .background(Color.white.opacity(0.9))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
                         }.padding(.horizontal, 20)
                     }.overlay(
                         LinearGradient(
@@ -122,8 +127,19 @@ struct SignUpView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
     }
+    
+    
+    func signUpUser() {
+        let db = Firestore.firestore()
+        // autheticate here!
+        
+    }
 }
 
-#Preview {
-    SignUpView()
+#Preview("Patient") {
+    SignUpView(selectedRole: .patient)
+}
+
+#Preview("Therapist") {
+    SignUpView(selectedRole: .therapist)
 }

@@ -69,7 +69,7 @@ struct LoginView: View {
                         }
 
                         NavigationLink {
-                            SignUpView()
+                            UserRoleView()
                         } label: {
                             Text("Create Account")
                                 .fontWeight(.semibold)
