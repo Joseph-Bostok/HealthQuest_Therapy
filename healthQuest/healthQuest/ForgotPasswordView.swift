@@ -12,6 +12,8 @@ struct ForgotPasswordView: View {
     @State private var email = ""
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
+    @State private var successMessage = ""
 
     
     var body: some View {
@@ -34,7 +36,7 @@ struct ForgotPasswordView: View {
                         
                     Spacer()
                     VStack(spacing: 16) {
-                        Text("Enter your email continue")
+                        Text("Enter your email to continue")
                             .foregroundStyle(.secondary)
                         TextField("Email", text: $email)
                             .keyboardType(.emailAddress)
@@ -55,7 +57,16 @@ struct ForgotPasswordView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                     }.padding(.horizontal)
-                    
+                        .alert("Error", isPresented: $showErrorAlert) {
+                            Button("OK", role: .cancel) { }
+                        } message: {
+                            Text(errorMessage)
+                        }
+                        .alert("Success", isPresented: $showSuccessAlert) {
+                            Button("OK", role: .cancel) { }
+                        } message: {
+                            Text(successMessage)
+                        }
                     Spacer()
                     
                 }
@@ -64,7 +75,20 @@ struct ForgotPasswordView: View {
     } // view end
     
     func resetPassword() {
-        
+        guard !email.isEmpty else {
+                    errorMessage = "Please enter your email address."
+                    showErrorAlert = true
+                    return
+                }
+        Auth.auth().sendPasswordReset(withEmail: email) { error in
+                    if let _ = error {
+                        errorMessage = "Error sending reset email"
+                        showErrorAlert = true
+                    } else {
+                        successMessage = "A password reset email has been sent to \(email)."
+                        showSuccessAlert = true
+                    }
+        }
     }
 }
     
