@@ -18,34 +18,41 @@ struct SignUpView: View {
     @State private var firstName = ""
     @State private var lastName = ""
     @State private var medicalLicenseNum = ""
-
-
+    @State private var errorMessage = ""
+    @State private var isLoading = false
+    @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
+    @State private var successMessage = ""
+    
+    
+    
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Color("AppBackground")
                     .ignoresSafeArea()
-
+                
                 VStack {
                     Spacer()
-
+                    
                     VStack(spacing: 16) {
                         Image("AppLogo")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 140, height: 140)
-
+                        
                         Text("Welcome To")
                             .font(.title.bold())
                             .foregroundStyle(Color("AccentColor"))
                         Text("HealthQuest")
                             .font(.largeTitle.bold())
                             .foregroundStyle(Color("AccentColor"))
-
+                        
                         Text("Sign up to continue")
                             .foregroundStyle(.secondary)
                     }
-
+                    
                     Spacer()
                     ScrollView {
                         VStack(spacing: 24) {
@@ -80,7 +87,6 @@ struct SignUpView: View {
                             
                             if selectedRole == .patient {
                                 DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
-                                    .datePickerStyle(.compact)
                             }
                             
                             if selectedRole == .therapist {
@@ -105,36 +111,146 @@ struct SignUpView: View {
                     //chatgpt 5.3 used to help with creating the gradient at bottom of scrollable area to look visually cohesive
                     
                     VStack(spacing: 16) {
-                        Button {
-                            print("Sign Up Tapped")
-                        } label: {
-                            Text("Sign Up")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color("AccentColor"))
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        Button(isLoading ? "Creating Account..." : "Sign Up") {
+                            signUp()
                         }
+                        .disabled(isLoading)
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color("AccentColor"))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                         
                     }
                     .padding(.horizontal, 24)
-
+                    
                     Spacer()
                 }
                 .padding(.vertical)
+            }.alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .alert("Success", isPresented: $showSuccessAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(successMessage)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-    }
+    } //view ends here
     
     
-    func signUpUser() {
-        let db = Firestore.firestore()
-        // autheticate here!
+    func isAtLeast18(birthdateEntered: Date) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
         
+        let ageComponents = calendar.dateComponents([.year], from: birthdateEntered, to: now)
+        return (ageComponents.year ?? 0) >= 18
     }
-}
+    
+    func signUp() {
+        
+        guard !firstName.isEmpty, !lastName.isEmpty, !email.isEmpty, !password.isEmpty else {
+            errorMessage = "Please fill in all required fields."
+            showErrorAlert = true
+            return
+        }
+        
+        if selectedRole == .therapist && medicalLicenseNum.isEmpty {
+            errorMessage = "Please fill in all required fields."
+            showErrorAlert = true
+            return
+        }
+        
+        if selectedRole == .patient && !isAtLeast18(birthdateEntered: birthdate) {
+            errorMessage = "Must be at least 18 to sign up."
+            showErrorAlert = true
+            return
+        }
+        
+        isLoading = true
+        
+        let db = Firestore.firestore()
+        
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+
+                    guard let user = result?.user else {
+                        errorMessage = "Could not create account."
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+
+                    let uid = user.uid
+
+                    if selectedRole == .patient {
+                        let data: [String: Any] = [
+                            "firstName": firstName,
+                            "lastName": lastName,
+                            "email": email,
+                            "birthdate": Timestamp(date: birthdate),
+                            "createdAt": Timestamp()
+                        ]
+                        db.collection("patients").document(uid).setData(data) { error in
+                            isLoading = false
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                successMessage = "Patient Account Created!"
+                                showSuccessAlert = true
+                                logOut()
+                            }
+                        }
+                    } else {
+                        let data: [String: Any] = [
+                            "firstName": firstName,
+                            "lastName": lastName,
+                            "email": email,
+                            "licenseNumber": medicalLicenseNum,
+                            "createdAt": Timestamp()
+                        ]
+
+                        db.collection("therapists").document(uid).setData(data) { error in
+                            isLoading = false
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                successMessage = "Therapist Account Created!"
+                                showSuccessAlert = true
+                                logOut()
+                            }
+                        }
+                    }
+            } //authentication ends here
+        
+        } // sign up function ends here
+    
+    // have to add logout function here to override firebases default behavior to sign in after sign up
+    func logOut() {
+        do {
+            try Auth.auth().signOut()
+        } catch {
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+            return
+        }
+    }
+    
+} //struct end here
+
+// used chatgpt 5.3 to help with research on implementing firebase into a SwiftUI application
+
 
 #Preview("Patient") {
     SignUpView(selectedRole: .patient)

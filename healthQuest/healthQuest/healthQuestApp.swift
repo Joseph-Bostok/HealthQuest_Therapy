@@ -8,24 +8,28 @@
 import SwiftUI
 import FirebaseCore
 
-class AppDelegate: NSObject, UIApplicationDelegate {
-  func application(_ application: UIApplication,
-                   didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-    FirebaseApp.configure()
-
-    return true
-  }
-}
-
 @main
 struct healthQuestApp: App {
-    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @State private var showSplash = true
+    
+    init() {
+        FirebaseApp.configure()
+    }
 
     var body: some Scene {
-        WindowGroup {
-            RootView()
+            WindowGroup {
+                if showSplash {
+                    SplashView()
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    showSplash = false}
+                            }
+                        }
+                } else {
+                    RootView()
+                }
+            }
         }
-    }
 }
-
 
