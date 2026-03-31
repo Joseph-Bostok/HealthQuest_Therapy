@@ -7,12 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1FBF42192F7A0E2B005609B1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1FBF42182F7A0E2B005609B1 /* GoogleService-Info.plist */; };
 		5EEBAA262F782BF0000462D4 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5EEBAA252F782BF0000462D4 /* FirebaseAnalytics */; };
 		5EEBAA282F782BF0000462D4 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 5EEBAA272F782BF0000462D4 /* FirebaseAuth */; };
 		5EEBAA2A2F782BF0000462D4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5EEBAA292F782BF0000462D4 /* FirebaseFirestore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1FBF42182F7A0E2B005609B1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		5EEBA9E62F744DDB000462D4 /* healthQuest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = healthQuest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -43,6 +45,7 @@
 			children = (
 				5EEBA9E82F744DDB000462D4 /* healthQuest */,
 				5EEBA9E72F744DDB000462D4 /* Products */,
+				1FBF42182F7A0E2B005609B1 /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -124,6 +127,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1FBF42192F7A0E2B005609B1 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
