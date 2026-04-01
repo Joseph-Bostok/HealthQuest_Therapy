@@ -10,8 +10,7 @@ import FirebaseAuth
 
 
 struct HomePageView: View {
-    @State private var errorMessage = ""
-    @State private var showErrorAlert = false
+
     
     let firstName: String
     var body: some View {
@@ -20,35 +19,17 @@ struct HomePageView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Color("AccentColor"))
+            Text("uhhh idk what should be on this page yet")
+            Text("maybe notifications from therapists")
             Spacer()
+            
         }
-        Button {
-            logOut()
-        } label: {
-            Text("Log Out")
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color("AccentColor"))
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-        }.alert("Error", isPresented: $showErrorAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(errorMessage)
-        }
-        .padding()
+        
     }
     
     
-    func logOut() {
-        do {
-            try Auth.auth().signOut()
-        } catch {
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
-            return
-        }
-    }
+    
     
 }
+
+

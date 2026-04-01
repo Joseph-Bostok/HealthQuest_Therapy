@@ -10,6 +10,7 @@ import SwiftUI
 
 // MARK: – Mood enum
 enum Mood: String, CaseIterable, Identifiable {
+    //TO DO: These are not currently functional
     case terrible = "😞"
     case bad      = "😕"
     case neutral  = "😐"
@@ -370,6 +371,7 @@ struct JournalEntryView: View {
             "sleepHours":      sleepHours,
             "exerciseMinutes": Int(exerciseMinutes),
             "mealsEaten":      mealsEaten
+            // TODO (Lauren): add therapist comments as an array
         ]
         print("📓 Entry ready:", entryData)
 

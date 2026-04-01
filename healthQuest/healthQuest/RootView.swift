@@ -13,7 +13,7 @@ struct RootView: View {
                 if isLoadingUserData {
                     ProgressView("Loading...")
                 } else {
-                    HomePageView(firstName: firstName)
+                    NavigationBarView(firstName: firstName)
                 }
             } else {
                 LoginView()
