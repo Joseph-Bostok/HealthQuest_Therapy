@@ -1,15 +1,8 @@
-//
-//  SignUpView.swift
-//  healthQuest
-//
-//  Created by Lauren Simineau on 3/27/26.
-//
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
 struct SignUpView: View {
-    //helps open patient or therapist sign up
     let selectedRole: UserRole
     
     @State private var email = ""
@@ -24,8 +17,6 @@ struct SignUpView: View {
     @State private var showErrorAlert = false
     @State private var showSuccessAlert = false
     @State private var successMessage = ""
-    
-    
     
     var body: some View {
         NavigationStack {
@@ -45,6 +36,7 @@ struct SignUpView: View {
                         Text("Welcome To")
                             .font(.title.bold())
                             .foregroundStyle(Color("AccentColor"))
+                        
                         Text("HealthQuest")
                             .font(.largeTitle.bold())
                             .foregroundStyle(Color("AccentColor"))
@@ -54,90 +46,99 @@ struct SignUpView: View {
                     }
                     
                     Spacer()
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            TextField("First Name", text: $firstName)
-                                .textInputAutocapitalization(.words)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                            
-                            TextField("Last Name", text: $lastName)
-                                .textInputAutocapitalization(.words)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                            
-                            TextField("Email", text: $email)
-                                .keyboardType(.emailAddress)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                            
-                            SecureField("Password", text: $password)
-                                .textInputAutocapitalization(.never)
-                                .autocorrectionDisabled()
-                                .padding()
-                                .background(Color.white.opacity(0.9))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                            
-                            if selectedRole == .patient {
-                                DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
-                            }
-                            
-                            if selectedRole == .patient {
-                                TextField("Referral Code", text: $referralCode)
+                    
+                    // Scrollable Form + Gradient
+                    ZStack(alignment: .bottom) {
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                
+                                TextField("First Name", text: $firstName)
+                                    .textInputAutocapitalization(.words)
+                                    .autocorrectionDisabled()
+                                    .padding()
+                                    .background(Color.white.opacity(0.9))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                
+                                TextField("Last Name", text: $lastName)
+                                    .textInputAutocapitalization(.words)
+                                    .autocorrectionDisabled()
+                                    .padding()
+                                    .background(Color.white.opacity(0.9))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                
+                                TextField("Email", text: $email)
+                                    .keyboardType(.emailAddress)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
                                     .padding()
                                     .background(Color.white.opacity(0.9))
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                            }
-                            
-                            if selectedRole == .therapist {
-                                TextField("Medical License #", text: $medicalLicenseNum)
+                                
+                                SecureField("Password", text: $password)
                                     .textInputAutocapitalization(.never)
                                     .autocorrectionDisabled()
                                     .padding()
                                     .background(Color.white.opacity(0.9))
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                                
+                                if selectedRole == .patient {
+                                    DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
+                                }
+                                
+                                if selectedRole == .patient {
+                                    TextField("Referral Code", text: $referralCode)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .padding()
+                                        .background(Color.white.opacity(0.9))
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                                
+                                if selectedRole == .therapist {
+                                    TextField("Medical License #", text: $medicalLicenseNum)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .padding()
+                                        .background(Color.white.opacity(0.9))
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                                
+                                Button(isLoading ? "Creating Account..." : "Sign Up") {
+                                    signUp()
+                                }
+                                .disabled(isLoading)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .padding(.top, 8)
                             }
-                        }.padding(.horizontal, 20)
-                    }.overlay(
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 40)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        
+
                         LinearGradient(
-                            gradient: Gradient(colors: [Color.clear, Color.gray]),
+                            colors: [
+                                Color.clear,
+                                Color("AppBackground")
+                            ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
-                        .frame(height: 40),
-                        alignment: .bottom
-                    ).scrollDismissesKeyboard(.interactively)
-                    
-                    //chatgpt 5.3 used to help with creating the gradient at bottom of scrollable area to look visually cohesive
-                    
-                    VStack(spacing: 16) {
-                        Button(isLoading ? "Creating Account..." : "Sign Up") {
-                            signUp()
-                        }
-                        .disabled(isLoading)
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color("AccentColor"))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        
+                        .frame(height: 40)
+                        .allowsHitTesting(false)
                     }
-                    .padding(.horizontal, 24)
                     
                     Spacer()
                 }
+                .frame(maxHeight: .infinity)
                 .padding(.vertical)
-            }.alert("Error", isPresented: $showErrorAlert) {
+            }
+            .alert("Error", isPresented: $showErrorAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(errorMessage)
@@ -149,7 +150,9 @@ struct SignUpView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-    } //view ends here
+    }//view ends here
+    
+        //chatgpt 5.3 used to help with restructuring UI here and fixing issues with device compatibility
     
     
     func isAtLeast18(birthdateEntered: Date) -> Bool {
