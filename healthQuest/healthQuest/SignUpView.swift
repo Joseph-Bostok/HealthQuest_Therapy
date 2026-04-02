@@ -263,6 +263,7 @@ struct SignUpView: View {
                     "email": email,
                     "birthdate": Timestamp(date: birthdate),
                     "createdAt": Timestamp(),
+                    "active": true,
                     "therapistID": therapistId
                 ]
                 

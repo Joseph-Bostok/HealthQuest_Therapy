@@ -56,6 +56,19 @@ struct ProfilePageView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+                if session.user?.role == "patient" {
+                    Button {
+                        deleteAccount()
+                    } label: {
+                        Text("Delete Account")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color("AccentColor"))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                }
             }.navigationTitle("Profile")
             .alert("Error", isPresented: $showErrorAlert) {
                 Button("OK", role: .cancel) { }
@@ -128,6 +141,33 @@ struct ProfilePageView: View {
             errorMessage = error.localizedDescription
             showErrorAlert = true
             return
+        }
+    }
+    
+    func deleteAccount() {
+        if let user = Auth.auth().currentUser {
+
+            let db = Firestore.firestore()
+            if let uid = session.user?.uid {
+                db.collection("patients").document(uid).updateData([
+                    "active": false
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        return
+                    }
+                }
+            }
+            user.delete { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                } else {
+                    errorMessage = "Account Successfully Deleted."
+                    showErrorAlert = true
+                }
+            }
         }
     }
 }
