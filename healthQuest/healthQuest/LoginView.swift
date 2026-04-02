@@ -1,8 +1,18 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
+    @State private var navigateToHome = false
+    @State private var firstName = ""
+    @State private var isLoading = false
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
+    @State private var successMessage = ""
+    
 
     var body: some View {
         NavigationStack {
@@ -20,9 +30,9 @@ struct LoginView: View {
                             .frame(width: 140, height: 140)
 
                         Text("Welcome Back")
-                            .font(.largeTitle.bold())
+                            .font(.title.bold())
                             .foregroundStyle(Color("AccentColor"))
-
+         
                         Text("Log in to continue")
                             .foregroundStyle(.secondary)
                     }
@@ -48,16 +58,17 @@ struct LoginView: View {
 
                         HStack {
                             Spacer()
-
-                            Button("Forgot Password?") {
-                                print("Forgot password tapped")
+                            NavigationLink {
+                                ForgotPasswordView()
+                            } label: {
+                                Text("Forgot Password?")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color("AccentColor"))
                             }
-                            .font(.footnote)
-                            .foregroundStyle(Color("AccentColor"))
                         }
 
                         Button {
-                            print("Login tapped with email: \(email)")
+                            logIn()
                         } label: {
                             Text("Log In")
                                 .fontWeight(.semibold)
@@ -67,7 +78,6 @@ struct LoginView: View {
                                 .foregroundStyle(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
-
                         NavigationLink {
                             UserRoleView()
                         } label: {
@@ -81,6 +91,10 @@ struct LoginView: View {
                                         .stroke(Color("AccentColor"), lineWidth: 1.5)
                                 )
                         }
+                    }.alert("Error", isPresented: $showErrorAlert) {
+                        Button("OK", role: .cancel) { }
+                    } message: {
+                        Text(errorMessage)
                     }
                     .padding(.horizontal, 24)
 
@@ -90,11 +104,24 @@ struct LoginView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
+    } //view end
+    
+    
+    func logIn() {
+        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        return
+                    }
+                }
     }
-}
+    
+} // struct end
 
 #Preview {
     LoginView()
 }
 
-//ChatGPT 5.3 used to help with generating and organizing some basic UI elements
+// ChatGPT 5.3 used to help with generating and organizing some basic UI elements,
+// and with understanding how to authenticate users via firebase
