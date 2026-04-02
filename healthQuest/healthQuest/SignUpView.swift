@@ -195,31 +195,31 @@ struct SignUpView: View {
     func signUpPatient() {
         let db = Firestore.firestore()
         let ref = db.collection("referralCodes").document(referralCode)
-
+        
         ref.getDocument { document, error in
             if let error = error {
                 errorMessage = error.localizedDescription
                 showErrorAlert = true
                 return
             }
-
+            
             guard let document = document, document.exists else {
                 errorMessage = "Invalid referral code."
                 showErrorAlert = true
                 return
             }
-
+            
             let used = document.get("used") as? Bool ?? false
             let therapistId = document.get("therapistId") as? String ?? ""
-
+            
             if used {
                 errorMessage = "This referral code has already been used."
                 showErrorAlert = true
                 return
             }
-
+            
             isLoading = true
-
+            
             Auth.auth().createUser(withEmail: email, password: password) { result, error in
                 if let error = error {
                     errorMessage = error.localizedDescription
@@ -227,16 +227,16 @@ struct SignUpView: View {
                     isLoading = false
                     return
                 }
-
+                
                 guard let user = result?.user else {
                     errorMessage = "Could not create account."
                     showErrorAlert = true
                     isLoading = false
                     return
                 }
-
+                
                 let uid = user.uid
-
+                
                 let data: [String: Any] = [
                     "firstName": firstName,
                     "lastName": lastName,
@@ -245,7 +245,7 @@ struct SignUpView: View {
                     "createdAt": Timestamp(),
                     "therapistID": therapistId
                 ]
-
+                
                 db.collection("patients").document(uid).setData(data) { error in
                     if let error = error {
                         errorMessage = error.localizedDescription
@@ -253,72 +253,86 @@ struct SignUpView: View {
                         isLoading = false
                         return
                     }
-
-                    ref.updateData([
-                        "used": true
-                    ]) { error in
+                }
+                db.collection("therapists").document(therapistId).updateData([
+                    "patients": FieldValue.arrayUnion([uid])
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
                         isLoading = false
-
-                        if let error = error {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
-                        } else {
-                            successMessage = "Patient Account Created and linked to Therapist!"
-                            showSuccessAlert = true
-                        }
+                        return
                     }
                 }
-            }
-        }
-    }
-        
-func signUpTherapist() {
-    let db = Firestore.firestore()
-            Auth.auth().createUser(withEmail: email, password: password) { result, error in
-                if let error = error {
-                    errorMessage = error.localizedDescription
-                    showErrorAlert = true
-                    isLoading = false
-                    return
-                }
                 
-                guard let user = result?.user else {
-                    errorMessage = "Could not create account."
-                    showErrorAlert = true
+                ref.updateData([
+                    "used": true
+                ]) { error in
                     isLoading = false
-                    return
-                }
-                
-                let uid = user.uid
-                let data: [String: Any] = [
-                    "firstName": firstName,
-                    "lastName": lastName,
-                    "email": email,
-                    "licenseNumber": medicalLicenseNum,
-                    "createdAt": Timestamp()
-                ]
-                
-                db.collection("therapists").document(uid).setData(data) { error in
-                    isLoading = false
+                    
                     if let error = error {
                         errorMessage = error.localizedDescription
                         showErrorAlert = true
                     } else {
-                        successMessage = "Therapist Account Created!"
+                        successMessage = "Patient Account Created and linked to Therapist!"
                         showSuccessAlert = true
                     }
                 }
             }
         }
-        
-    }//struct end here
-// used chatgpt 5.3 to help with research on implementing firebase into a SwiftUI application
+    }
+    
+    
+    func signUpTherapist() {
+        let db = Firestore.firestore()
+        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                isLoading = false
+                return
+            }
+            
+            guard let user = result?.user else {
+                errorMessage = "Could not create account."
+                showErrorAlert = true
+                isLoading = false
+                return
+            }
+            
+            let uid = user.uid
+            let data: [String: Any] = [
+                "firstName": firstName,
+                "lastName": lastName,
+                "email": email,
+                "licenseNumber": medicalLicenseNum,
+                "createdAt": Timestamp(),
+                "patients": [] 
+            ]
+            
+            db.collection("therapists").document(uid).setData(data) { error in
+                isLoading = false
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                } else {
+                    successMessage = "Therapist Account Created!"
+                    showSuccessAlert = true
+                }
+            }
+        }
+    }
+    
+}    //struct end here
+    // used chatgpt 5.3 to help with research on implementing firebase into a SwiftUI application
 
+    
+    #Preview("Patient") {
+        SignUpView(selectedRole: .patient)
+    }
+    
+    #Preview("Therapist") {
+        SignUpView(selectedRole: .therapist)
+    }
+    
 
-#Preview("Patient") {
-    SignUpView(selectedRole: .patient)
-}
-
-#Preview("Therapist") {
-    SignUpView(selectedRole: .therapist)
-}
