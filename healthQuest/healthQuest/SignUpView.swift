@@ -14,6 +14,7 @@ struct SignUpView: View {
     
     @State private var email = ""
     @State private var password = ""
+    @State private var referralCode = ""
     @State private var birthdate = Date()
     @State private var firstName = ""
     @State private var lastName = ""
@@ -23,7 +24,6 @@ struct SignUpView: View {
     @State private var showErrorAlert = false
     @State private var showSuccessAlert = false
     @State private var successMessage = ""
-    
     
     
     
@@ -89,6 +89,15 @@ struct SignUpView: View {
                                 DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
                             }
                             
+                            if selectedRole == .patient {
+                                TextField("Referral Code", text: $referralCode)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .padding()
+                                    .background(Color.white.opacity(0.9))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            
                             if selectedRole == .therapist {
                                 TextField("Medical License #", text: $medicalLicenseNum)
                                     .textInputAutocapitalization(.never)
@@ -152,7 +161,6 @@ struct SignUpView: View {
     }
     
     func signUp() {
-        
         guard !firstName.isEmpty, !lastName.isEmpty, !email.isEmpty, !password.isEmpty else {
             errorMessage = "Please fill in all required fields."
             showErrorAlert = true
@@ -171,11 +179,74 @@ struct SignUpView: View {
             return
         }
         
-        isLoading = true
+        if selectedRole == .patient && referralCode.isEmpty {
+            errorMessage = "Must have active referral code."
+            showErrorAlert = true
+            return
+        }
         
+        if selectedRole == .patient {
+            signUpPatient()
+        } else {
+            signUpTherapist()
+        }
+    } // sign up function ends here
+    
+    func signUpPatient() {
         let db = Firestore.firestore()
-        
-        Auth.auth().createUser(withEmail: email, password: password) { result, error in
+        let ref = db.collection("referralCodes").document(referralCode)
+
+        ref.getDocument { document, error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                return
+            }
+
+            guard let document = document, document.exists else {
+                errorMessage = "Invalid referral code."
+                showErrorAlert = true
+                return
+            }
+
+            let used = document.get("used") as? Bool ?? false
+            let therapistId = document.get("therapistId") as? String ?? ""
+
+            if used {
+                errorMessage = "This referral code has already been used."
+                showErrorAlert = true
+                return
+            }
+
+            isLoading = true
+
+            Auth.auth().createUser(withEmail: email, password: password) { result, error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    isLoading = false
+                    return
+                }
+
+                guard let user = result?.user else {
+                    errorMessage = "Could not create account."
+                    showErrorAlert = true
+                    isLoading = false
+                    return
+                }
+
+                let uid = user.uid
+
+                let data: [String: Any] = [
+                    "firstName": firstName,
+                    "lastName": lastName,
+                    "email": email,
+                    "birthdate": Timestamp(date: birthdate),
+                    "createdAt": Timestamp(),
+                    "therapistID": therapistId
+                ]
+
+                db.collection("patients").document(uid).setData(data) { error in
                     if let error = error {
                         errorMessage = error.localizedDescription
                         showErrorAlert = true
@@ -183,72 +254,64 @@ struct SignUpView: View {
                         return
                     }
 
-                    guard let user = result?.user else {
-                        errorMessage = "Could not create account."
-                        showErrorAlert = true
+                    ref.updateData([
+                        "used": true
+                    ]) { error in
                         isLoading = false
-                        return
-                    }
 
-                    let uid = user.uid
-
-                    if selectedRole == .patient {
-                        let data: [String: Any] = [
-                            "firstName": firstName,
-                            "lastName": lastName,
-                            "email": email,
-                            "birthdate": Timestamp(date: birthdate),
-                            "createdAt": Timestamp()
-                        ]
-                        db.collection("patients").document(uid).setData(data) { error in
-                            isLoading = false
-                            if let error = error {
-                                errorMessage = error.localizedDescription
-                                showErrorAlert = true
-                            } else {
-                                successMessage = "Patient Account Created!"
-                                showSuccessAlert = true
-                                logOut()
-                            }
-                        }
-                    } else {
-                        let data: [String: Any] = [
-                            "firstName": firstName,
-                            "lastName": lastName,
-                            "email": email,
-                            "licenseNumber": medicalLicenseNum,
-                            "createdAt": Timestamp()
-                        ]
-
-                        db.collection("therapists").document(uid).setData(data) { error in
-                            isLoading = false
-                            if let error = error {
-                                errorMessage = error.localizedDescription
-                                showErrorAlert = true
-                            } else {
-                                successMessage = "Therapist Account Created!"
-                                showSuccessAlert = true
-                                logOut()
-                            }
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                        } else {
+                            successMessage = "Patient Account Created and linked to Therapist!"
+                            showSuccessAlert = true
                         }
                     }
-            } //authentication ends here
-        
-        } // sign up function ends here
-    
-    // have to add logout function here to override firebases default behavior to sign in after sign up
-    func logOut() {
-        do {
-            try Auth.auth().signOut()
-        } catch {
-            errorMessage = error.localizedDescription
-            showErrorAlert = true
-            return
+                }
+            }
         }
     }
-    
-} //struct end here
-
+        
+func signUpTherapist() {
+    let db = Firestore.firestore()
+            Auth.auth().createUser(withEmail: email, password: password) { result, error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    isLoading = false
+                    return
+                }
+                
+                guard let user = result?.user else {
+                    errorMessage = "Could not create account."
+                    showErrorAlert = true
+                    isLoading = false
+                    return
+                }
+                
+                let uid = user.uid
+                let data: [String: Any] = [
+                    "firstName": firstName,
+                    "lastName": lastName,
+                    "email": email,
+                    "licenseNumber": medicalLicenseNum,
+                    "createdAt": Timestamp()
+                ]
+                
+                db.collection("therapists").document(uid).setData(data) { error in
+                    isLoading = false
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                    } else {
+                        successMessage = "Therapist Account Created!"
+                        showSuccessAlert = true
+                    }
+                }
+            }
+        }
+        
+    }//struct end here
 // used chatgpt 5.3 to help with research on implementing firebase into a SwiftUI application
 
 

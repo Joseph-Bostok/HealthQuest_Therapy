@@ -7,28 +7,27 @@
 
 import SwiftUI
 import FirebaseAuth
-
+import FirebaseFirestore
 
 struct HomePageView: View {
 
+    @EnvironmentObject var session: SessionViewModel
     
     let firstName: String
+    
     var body: some View {
         VStack {
-            Text("Welcome, \(firstName)!")
+            Text("Welcome, \(session.user?.role ?? "User")!")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(Color("AccentColor"))
-            Text("uhhh idk what should be on this page yet")
-            Text("maybe notifications from therapists")
+            
             Spacer()
             
         }
         
     }
-    
-    
-    
+
     
 }
 

@@ -11,6 +11,7 @@ import FirebaseCore
 @main
 struct healthQuestApp: App {
     @State private var showSplash = true
+    @StateObject private var session = SessionViewModel()
     
     init() {
         FirebaseApp.configure()
@@ -18,17 +19,19 @@ struct healthQuestApp: App {
 
     var body: some Scene {
             WindowGroup {
-                if showSplash {
-                    SplashView()
-                        .onAppear {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                withAnimation(.easeInOut(duration: 0.5)) {
-                                    showSplash = false}
+                Group {
+                    if showSplash {
+                        SplashView()
+                            .onAppear {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation(.easeInOut(duration: 0.5)) {
+                                        showSplash = false}
+                                }
                             }
-                        }
-                } else {
-                    RootView()
-                }
+                    } else {
+                        RootView()
+                    }
+                }.environmentObject(session)
             }
         }
 }
