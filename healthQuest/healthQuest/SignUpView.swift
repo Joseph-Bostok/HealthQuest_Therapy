@@ -57,14 +57,14 @@ struct SignUpView: View {
                     ScrollView {
                         VStack(spacing: 24) {
                             TextField("First Name", text: $firstName)
-                                .textInputAutocapitalization(.never)
+                                .textInputAutocapitalization(.words)
                                 .autocorrectionDisabled()
                                 .padding()
                                 .background(Color.white.opacity(0.9))
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             
                             TextField("Last Name", text: $lastName)
-                                .textInputAutocapitalization(.never)
+                                .textInputAutocapitalization(.words)
                                 .autocorrectionDisabled()
                                 .padding()
                                 .background(Color.white.opacity(0.9))
@@ -78,7 +78,7 @@ struct SignUpView: View {
                                 .background(Color.white.opacity(0.9))
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             
-                            TextField("Password", text: $password)
+                            SecureField("Password", text: $password)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .padding()
@@ -160,6 +160,20 @@ struct SignUpView: View {
         return (ageComponents.year ?? 0) >= 18
     }
     
+    func isValidLicenseNum(licenseNumEntered: String) -> Bool {
+        let licensePrefixes = [
+            "PSY-", "LP-", "PY-",          // Psychologist
+            "LPC-", "LCPC-", "LMHC-", "LCMHC-",  // Counselors
+            "LCSW-", "LMSW-", "CSW-",     // Social Workers
+            "LMFT-", "MFT-",             // Marriage & Family Therapists
+            "CADC-", "LCAS-", "LADC-"     // Addiction Counselors
+        ]
+        
+        let hasPrefix = licensePrefixes.contains { licenseNumEntered.uppercased().hasPrefix($0) }
+        
+        return hasPrefix
+    }
+    
     func signUp() {
         guard !firstName.isEmpty, !lastName.isEmpty, !email.isEmpty, !password.isEmpty else {
             errorMessage = "Please fill in all required fields."
@@ -169,6 +183,12 @@ struct SignUpView: View {
         
         if selectedRole == .therapist && medicalLicenseNum.isEmpty {
             errorMessage = "Please fill in all required fields."
+            showErrorAlert = true
+            return
+        }
+        
+        if selectedRole == .therapist && !isValidLicenseNum(licenseNumEntered: medicalLicenseNum) {
+            errorMessage = "License number provided is invalid."
             showErrorAlert = true
             return
         }
@@ -254,6 +274,8 @@ struct SignUpView: View {
                         return
                     }
                 }
+                
+                //TO DO: not working (likely permissions issue)
                 db.collection("therapists").document(therapistId).updateData([
                     "patients": FieldValue.arrayUnion([uid])
                 ]) { error in
@@ -262,6 +284,9 @@ struct SignUpView: View {
                         showErrorAlert = true
                         isLoading = false
                         return
+                    } else {
+                        successMessage = "TEST"
+                        showSuccessAlert = true
                     }
                 }
                 
