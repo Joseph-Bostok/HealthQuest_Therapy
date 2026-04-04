@@ -34,8 +34,8 @@ struct NavigationBarView: View {
             ChatsView()
                 .tabItem { Label("Chats", systemImage: "message") }
 
-            TherapistDirectoryView()
-                .tabItem { Label("Therapists", systemImage: "person.2") }
+           // TherapistDirectoryView()
+             //   .tabItem { Label("Therapists", systemImage: "person.2") }
 
             ProfilePageView()
                 .tabItem { Label("Profile", systemImage: "person.circle") }

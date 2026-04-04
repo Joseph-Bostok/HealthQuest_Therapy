@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import FirebaseFirestore
 
 // MARK: – Mood enum
 enum Mood: String, CaseIterable, Identifiable {
@@ -32,32 +33,43 @@ enum Mood: String, CaseIterable, Identifiable {
 
 // MARK: – View
 struct JournalEntryView: View {
-
+    @EnvironmentObject var session: SessionViewModel
+    @Environment(\.dismiss) private var dismiss
     // Journal text
     @State private var dailyThoughts:    String = ""
-    @State private var gratitude:        String = ""
-
+    @State private var comments:        String = ""
+    
+    // Error message
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    
     // Wellness metrics
     @State private var waterGlasses:     Double = 0
     @State private var sleepHours:       Double = 7
     @State private var exerciseMinutes:  Double = 0
     @State private var selectedMood:     Mood   = .neutral
     @State private var mealsEaten:       Int    = 3
-
+    
     // UI state
     @State private var entryDate:        Date   = Date()
     @State private var isSubmitting:     Bool   = false
     @State private var showSuccess:      Bool   = false
     @State private var showDatePicker:   Bool   = false
-
+    
     // Light gray matching AppBackground-adjacent cards
     private let fieldBg = Color(red: 0.914, green: 0.941, blue: 0.918)
-
+    
+    //optional journal entry summary for existing entries
+    let entryToEdit: JournalEntrySummary?
+    init(entryToEdit: JournalEntrySummary? = nil) {
+        self.entryToEdit = entryToEdit
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Color("AppBackground").ignoresSafeArea()
-
+                
                 ScrollView {
                     VStack(spacing: 24) {
                         dateSelectorRow
@@ -65,17 +77,19 @@ struct JournalEntryView: View {
                             icon: "text.alignleft",
                             title: "Daily Thoughts",
                             placeholder: "How are you feeling today? What's on your mind?",
-                            text: $dailyThoughts
+                            text: $dailyThoughts,
+                            isDisabled: false
                         )
                         journalSection(
                             icon: "heart.text.clipboard",
-                            title: "Gratitude",
-                            placeholder: "What are you grateful for today?",
-                            text: $gratitude
+                            title: "Therapist Comments",
+                            placeholder: "Any comments from your therapist will appear here.",
+                            text: $comments,
+                            isDisabled: true
                         )
                         wellnessSection
                         submitButton
-
+                        
                         if showSuccess {
                             Label("Entry saved!", systemImage: "checkmark.seal.fill")
                                 .foregroundStyle(.green)
@@ -89,9 +103,17 @@ struct JournalEntryView: View {
             }
             .navigationTitle("Journal Entry")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                loadEntryForEditing()
+            }
+            
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
     }
-
+    
     // MARK: – Date selector row
     private var dateSelectorRow: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -115,7 +137,7 @@ struct JournalEntryView: View {
                 .background(Color.white.opacity(0.95))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-
+            
             if showDatePicker {
                 DatePicker(
                     "Entry Date",
@@ -133,20 +155,21 @@ struct JournalEntryView: View {
             }
         }
     }
-
+    
     // MARK: – Journal text section
     @ViewBuilder
     private func journalSection(
         icon: String,
         title: String,
         placeholder: String,
-        text: Binding<String>
+        text: Binding<String>,
+        isDisabled: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(.headline)
                 .foregroundStyle(Color("AccentColor"))
-
+            
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.isEmpty {
                     Text(placeholder)
@@ -160,10 +183,11 @@ struct JournalEntryView: View {
                     .frame(minHeight: 110, maxHeight: 200)
                     .scrollContentBackground(.hidden)
                     .padding(6)
+                    .disabled(isDisabled)
             }
             .background(fieldBg)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-
+            
             Text("\(text.wrappedValue.count) characters")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -173,61 +197,20 @@ struct JournalEntryView: View {
         .background(Color.white.opacity(0.95))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
-
+    
     // MARK: – Wellness section
     private var wellnessSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Wellness Check-In")
                 .font(.headline)
                 .foregroundStyle(Color("AccentColor"))
-
+            
             VStack(spacing: 18) {
-
+                
                 // Mood picker
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Mood", systemImage: "face.smiling")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Color("AccentColor"))
-
-                    HStack(spacing: 0) {
-                        ForEach(Mood.allCases) { mood in
-                            Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    selectedMood = mood
-                                }
-                            } label: {
-                                VStack(spacing: 4) {
-                                    Text(mood.rawValue).font(.title2)
-                                    Text(mood.label)
-                                        .font(.caption2)
-                                        .foregroundStyle(
-                                            selectedMood == mood
-                                            ? Color("AccentColor") : .secondary
-                                        )
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(
-                                    selectedMood == mood
-                                    ? Color("AccentColor").opacity(0.12) : fieldBg
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(
-                                            selectedMood == mood
-                                            ? Color("AccentColor") : Color.clear,
-                                            lineWidth: 1.5
-                                        )
-                                )
-                                .scaleEffect(selectedMood == mood ? 1.08 : 1)
-                            }
-                        }
-                    }
-                }
-
+                moodPickerSection
                 Divider()
-
+                
                 // Water
                 metricSlider(
                     icon: "drop.fill",
@@ -238,9 +221,9 @@ struct JournalEntryView: View {
                     step: 1,
                     format: { "\(Int($0)) glass\(Int($0) == 1 ? "" : "es")" }
                 )
-
+                
                 Divider()
-
+                
                 // Sleep
                 metricSlider(
                     icon: "moon.zzz.fill",
@@ -251,9 +234,9 @@ struct JournalEntryView: View {
                     step: 0.5,
                     format: { String(format: "%.1f hr%@", $0, $0 == 1 ? "" : "s") }
                 )
-
+                
                 Divider()
-
+                
                 // Exercise
                 metricSlider(
                     icon: "figure.run",
@@ -264,15 +247,15 @@ struct JournalEntryView: View {
                     step: 5,
                     format: { "\(Int($0)) min" }
                 )
-
+                
                 Divider()
-
+                
                 // Meals eaten
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Meals Eaten", systemImage: "fork.knife")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.green)
-
+                    
                     HStack(spacing: 8) {
                         ForEach(0...6, id: \.self) { count in
                             Button {
@@ -310,7 +293,55 @@ struct JournalEntryView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
-
+    
+    private var moodPickerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Mood", systemImage: "face.smiling")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color("AccentColor"))
+            
+            HStack(spacing: 0) {
+                ForEach(Mood.allCases) { mood in
+                    moodButton(for: mood)
+                }
+            }
+        }
+    }
+    
+    private func moodButton(for mood: Mood) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                selectedMood = mood
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Text(mood.rawValue).font(.title2)
+                Text(mood.label)
+                    .font(.caption2)
+                    .foregroundStyle(
+                        selectedMood == mood
+                        ? Color("AccentColor") : .secondary
+                    )
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                selectedMood == mood
+                ? Color("AccentColor").opacity(0.12) : fieldBg
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(
+                        selectedMood == mood
+                        ? Color("AccentColor") : Color.clear,
+                        lineWidth: 1.5
+                    )
+            )
+            .scaleEffect(selectedMood == mood ? 1.08 : 1)
+        }
+    }
+    
     // MARK: – Metric slider helper
     @ViewBuilder
     private func metricSlider(
@@ -336,7 +367,7 @@ struct JournalEntryView: View {
                 .tint(Color("AccentColor"))
         }
     }
-
+    
     // MARK: – Submit button
     private var submitButton: some View {
         Button { submitEntry() } label: {
@@ -356,32 +387,115 @@ struct JournalEntryView: View {
         }
         .disabled(isSubmitting)
     }
-
+    
+    private func loadEntryForEditing() {
+        guard let entry = entryToEdit else { return }
+        
+        dailyThoughts = entry.dailyThoughts
+        comments = entry.comments
+        waterGlasses = Double(entry.waterGlasses)
+        sleepHours = Double(entry.sleepHours)
+        exerciseMinutes = Double(entry.exerciseMinutes)
+        mealsEaten = entry.mealsEaten
+        entryDate = entry.date
+        
+        switch entry.mood {
+        case "Terrible":
+            selectedMood = .terrible
+        case "Bad":
+            selectedMood = .bad
+        case "Good":
+            selectedMood = .good
+        case "Great":
+            selectedMood = .great
+        default:
+            selectedMood = .neutral
+        }
+    }
+    
     // MARK: – Submit
     private func submitEntry() {
         isSubmitting = true
-
-        // TODO (Lauren): pass to Firestore
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: entryDate)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        
+        guard let uid = session.user?.uid else {
+            errorMessage = "Issue accessing User Account. Try logging back in."
+            showErrorAlert = true
+            return
+        }
+        
         let entryData: [String: Any] = [
             "date":            entryDate,
+            "createdAt":       Timestamp(),
             "dailyThoughts":   dailyThoughts,
-            "gratitude":       gratitude,
             "mood":            selectedMood.label,
             "waterGlasses":    Int(waterGlasses),
             "sleepHours":      sleepHours,
             "exerciseMinutes": Int(exerciseMinutes),
             "mealsEaten":      mealsEaten
-            // TODO (Lauren): add therapist comments as an array
         ]
-        print("📓 Entry ready:", entryData)
+        
+        let db = Firestore.firestore()
+        
+        //used chat gpt 5.3 to generate logic for querying start date and end date for specific day for journal entry
+        //to determine if a new entry needs to be created or just updated
+        db.collection("journals")
+            .document(uid)
+            .collection("journalEntries")
+            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: startOfDay))
+            .whereField("date", isLessThan: Timestamp(date: endOfDay))
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    isSubmitting = false
+                    return
+                }
+                
+                if let existingDoc = snapshot?.documents.first {
+                    // Update existing entry for that day
+                    db.collection("journals")
+                        .document(uid)
+                        .collection("journalEntries")
+                        .document(existingDoc.documentID)
+                        .updateData(entryData) { error in
+                            isSubmitting = false
+                            
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                showSuccess = true
+                            }
+                        }
+                } else {
+                    // Create new entry if no journal entry exists
+                    var newEntryData = entryData
+                    newEntryData["createdAt"] = Timestamp(date: Date())
+                    
+                    db.collection("journals")
+                        .document(uid)
+                        .collection("journalEntries")
+                        .addDocument(data: newEntryData) { error in
+                            isSubmitting = false
+                            
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                showSuccess = true
+                            }
+                        }
+                }
+                
+                withAnimation { showSuccess = true }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isSubmitting = false
-            withAnimation { showSuccess = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation { showSuccess = false }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    dismiss()
+                }
             }
-        }
     }
 }
 

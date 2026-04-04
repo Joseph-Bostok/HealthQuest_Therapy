@@ -17,6 +17,13 @@ struct WellnessSummary {
     var weeklyEntries: Int = 0
 }
 
+// therapist summary
+struct PatientSummary {
+    var clients: Int = 0
+    var unread: Int = 0
+    var reviews: Int = 0
+}
+
 // MARK: - HomePageView
 struct HomePageView: View {
 
@@ -24,6 +31,7 @@ struct HomePageView: View {
     let firstName: String
 
     @State private var summary = WellnessSummary()
+    @State private var summary2 = PatientSummary()
     @State private var isLoadingStats = true
 
     private let db = Firestore.firestore()
@@ -50,6 +58,7 @@ struct HomePageView: View {
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 if session.user?.role == "patient" { loadPatientStats() }
+                if session.user?.role == "therapist" { loadTherapistStats() }
             }
         }
     }
@@ -88,8 +97,8 @@ struct HomePageView: View {
                     .foregroundStyle(Color("AccentColor"))
 
                 HStack(spacing: 12) {
-                    NavigationLink(destination: JournalEntryView()) {
-                        quickActionCard(icon: "pencil.and.list.clipboard", title: "New Entry",  subtitle: "Log today's check-in", color: Color("AccentColor"))
+                    NavigationLink(destination: ChatsView()) {
+                        quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Active Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
                     NavigationLink(destination: JournalView()) {
                         quickActionCard(icon: "books.vertical.fill",       title: "My Journal", subtitle: "View past entries",    color: .teal)
@@ -105,9 +114,9 @@ struct HomePageView: View {
     private var therapistContent: some View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
-                statCard(icon: "person.2.fill",      iconColor: Color("AccentColor"), value: "--", label: "Clients")
-                statCard(icon: "message.fill",       iconColor: .teal,                value: "--", label: "Unread")
-                statCard(icon: "checkmark.seal.fill", iconColor: .green,              value: "--", label: "Reviews")
+                statCard(icon: "person.2.fill",iconColor: Color("AccentColor"),value: "\(summary2.clients)", label: "Clients")
+                statCard(icon: "message.fill",iconColor: .teal, value: "--", label: "Unread")
+                statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.reviews)", label: "Reviews")
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -119,13 +128,11 @@ struct HomePageView: View {
                     NavigationLink(destination: ChatsView()) {
                         quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Client Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
-                    NavigationLink(destination: ProfilePageView()) {
+                    NavigationLink(destination: GenerateReferralCode()) {
                         quickActionCard(icon: "person.badge.plus", title: "Add Client", subtitle: "Generate referral code", color: .teal)
                     }
                 }
             }
-
-            tipCard
         }
     }
 
@@ -196,7 +203,7 @@ struct HomePageView: View {
         guard let uid = session.user?.uid else { return }
         let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
 
-        db.collection("patients").document(uid)
+        db.collection("journals").document(uid)
             .collection("journalEntries")
             .whereField("date", isGreaterThan: Timestamp(date: weekAgo))
             .order(by: "date", descending: true)
@@ -204,11 +211,66 @@ struct HomePageView: View {
                 isLoadingStats = false
                 guard let docs = snapshot?.documents else { return }
                 summary.weeklyEntries = docs.count
+                let entries: [Date] = docs.compactMap {
+                                ($0.data()["date"] as? Timestamp)?.dateValue()
+                            }
+                summary.streakDays = calculateStreak(from: entries)
                 if let latest = docs.first {
                     let mood = latest.data()["mood"] as? String ?? "Neutral"
                     summary.recentMood = moodEmoji(mood)
                 }
             }
+    }
+    
+    private func loadTherapistStats() {
+        guard let uid = session.user?.uid else { return }
+        db.collection("therapists")
+            .document(uid)
+            .getDocument { snapshot, error in
+                    if let data = snapshot?.data(),
+                       let array = data["patients"] as? [String] {
+                        let count = array.count
+                        summary2.clients = count
+                        summary2.reviews = 5
+                    }
+                }
+    }
+    
+    //used chatgpt 5.3 to generate behavior for calculating streak
+    private func calculateStreak(from dates: [Date]) -> Int {
+        let calendar = Calendar.current
+
+        let uniqueDays = Set(dates.map { calendar.startOfDay(for: $0) })
+        let sortedDays = uniqueDays.sorted(by: >)
+
+        guard !sortedDays.isEmpty else { return 0 }
+
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        guard sortedDays[0] == today || sortedDays[0] == yesterday else {
+            return 0
+        }
+
+        var streak = 1
+        var currentDay = sortedDays[0]
+
+        for nextDay in sortedDays.dropFirst() {
+            guard let expectedPreviousDay = calendar.date(byAdding: .day, value: -1, to: currentDay) else {
+                break
+            }
+
+            if calendar.isDate(nextDay, inSameDayAs: expectedPreviousDay) {
+                streak += 1
+                currentDay = nextDay
+            } else if calendar.isDate(nextDay, inSameDayAs: currentDay) {
+                continue
+            } else {
+                break
+            }
+        }
+
+        return streak
     }
 
     private func moodEmoji(_ mood: String) -> String {

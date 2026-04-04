@@ -267,7 +267,8 @@ struct SignUpView: View {
                     "birthdate": Timestamp(date: birthdate),
                     "createdAt": Timestamp(),
                     "active": true,
-                    "therapistID": therapistId
+                    "therapistID": therapistId,
+                    "bio": ""
                 ]
                 
                 db.collection("patients").document(uid).setData(data) { error in
@@ -279,7 +280,6 @@ struct SignUpView: View {
                     }
                 }
                 
-                //TO DO: not working (likely permissions issue)
                 db.collection("therapists").document(therapistId).updateData([
                     "patients": FieldValue.arrayUnion([uid])
                 ]) { error in
@@ -288,9 +288,6 @@ struct SignUpView: View {
                         showErrorAlert = true
                         isLoading = false
                         return
-                    } else {
-                        successMessage = "TEST"
-                        showSuccessAlert = true
                     }
                 }
                 
@@ -336,7 +333,8 @@ struct SignUpView: View {
                 "email": email,
                 "licenseNumber": medicalLicenseNum,
                 "createdAt": Timestamp(),
-                "patients": [] 
+                "patients": [],
+                "bio": ""
             ]
             
             db.collection("therapists").document(uid).setData(data) { error in

@@ -49,7 +49,7 @@ struct LoginView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14))
 
                        
-                        TextField("Password", text: $password)
+                        SecureField("Password", text: $password)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .padding()

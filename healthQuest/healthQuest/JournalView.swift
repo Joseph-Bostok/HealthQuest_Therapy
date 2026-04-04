@@ -12,17 +12,17 @@ import SwiftUI
 import FirebaseFirestore
 
 // MARK: - Journal Entry Summary Model
-struct JournalEntrySummary: Identifiable {
+struct JournalEntrySummary: Identifiable, Hashable {
     let id: String
     let date: Date
     let mood: String
     let moodEmoji: String
     let dailyThoughts: String
-    let gratitude: String
     let waterGlasses: Int
     let sleepHours: Double
     let exerciseMinutes: Int
     let mealsEaten: Int
+    let comments: String
 }
 
 // MARK: - JournalView
@@ -35,6 +35,9 @@ struct JournalView: View {
     @State private var showNewEntry = false
     @State private var searchText = ""
     @State private var selectedMoodFilter: String? = nil
+    @State private var todaysEntry: JournalEntrySummary? = nil
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
 
     private let db = Firestore.firestore()
     private let moodFilters = ["All", "😄", "🙂", "😐", "😕", "😞"]
@@ -47,7 +50,7 @@ struct JournalView: View {
         if !searchText.isEmpty {
             result = result.filter {
                 $0.dailyThoughts.localizedCaseInsensitiveContains(searchText) ||
-                $0.gratitude.localizedCaseInsensitiveContains(searchText)
+                $0.comments.localizedCaseInsensitiveContains(searchText)
             }
         }
         return result
@@ -59,10 +62,10 @@ struct JournalView: View {
                 Color("AppBackground").ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    moodFilterBar
-                        .padding(.vertical, 10)
-                        .padding(.horizontal)
-                        .background(Color("AppBackground"))
+                   // moodFilterBar
+                   //     .padding(.vertical, 10)
+                   //     .padding(.horizontal)
+                  //      .background(Color("AppBackground"))
 
                     if isLoading {
                         Spacer()
@@ -86,13 +89,22 @@ struct JournalView: View {
                         .searchable(text: $searchText, prompt: "Search entries…")
                     }
                 }
+                
             }
             .navigationTitle("My Journal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        showNewEntry = true
+                        guard !isLoading else { return }
+
+                        if let entry = todaysEntryIfExists() {
+                            errorMessage = "Journal already created today. Edit the existing journal :)"
+                            showErrorAlert = true
+                            todaysEntry = entry
+                        } else {
+                            showNewEntry = true
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .fontWeight(.semibold)
@@ -100,43 +112,51 @@ struct JournalView: View {
                 }
             }
             .onAppear(perform: loadEntries)
-            // New entry is intentionally a sheet (full modal compose experience)
             .sheet(isPresented: $showNewEntry, onDismiss: loadEntries) {
                 JournalEntryView()
             }
+            //used chatgpt 5.3 to help with pushing to existing journal entry if entry already exists for a given day
+            .navigationDestination(item: $todaysEntry) { entry in
+                JournalEntryDetailView(entry: entry)
+            }
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
+        
     }
 
     // MARK: - Mood Filter Bar
-    private var moodFilterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(moodFilters, id: \.self) { filter in
-                    let isSelected = filter == "All"
-                        ? selectedMoodFilter == nil
-                        : selectedMoodFilter == filter
-
-                    Button {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedMoodFilter = (filter == "All") ? nil : filter
-                        }
-                    } label: {
-                        Text(filter)
-                            .font(filter == "All" ? .caption.bold() : .body)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(
-                                isSelected
-                                    ? Color("AccentColor")
-                                    : Color.white.opacity(0.9)
-                            )
-                            .foregroundStyle(isSelected ? .white : .primary)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-        }
-    }
+ //   private var moodFilterBar: some View {
+ //       ScrollView(.horizontal, showsIndicators: false) {
+ //           HStack(spacing: 8) {
+ //               ForEach(moodFilters, id: \.self) { filter in
+  //                  let isSelected = filter == "All"
+  //                      ? selectedMoodFilter == nil
+  //                      : selectedMoodFilter == filter
+//
+//Button {
+        //                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+           //                 selectedMoodFilter = (filter == "All") ? nil : filter
+        //                }
+        //            } label: {
+        //                Text(filter)
+        //                    .font(filter == "All" ? .caption.bold() : .body)
+       //                     .padding(.horizontal, 14)
+        //                    .padding(.vertical, 7)
+        //                    .background(
+        //                        isSelected
+             //                       ? Color("AccentColor")
+               //                     : Color.white.opacity(0.9)
+           //                 )
+         //                   .foregroundStyle(isSelected ? .white : .primary)
+       //                     .clipShape(Capsule())
+     //               }
+   //             }
+  //          }
+  //      }
+  //  }
 
     // MARK: - Empty State
     private var emptyState: some View {
@@ -167,13 +187,12 @@ struct JournalView: View {
         guard let uid = session.user?.uid else { return }
         isLoading = true
 
-        db.collection("patients").document(uid)
+        db.collection("journals").document(uid)
             .collection("journalEntries")
             .order(by: "date", descending: true)
             .addSnapshotListener { snapshot, _ in
                 isLoading = false
                 guard let docs = snapshot?.documents else { return }
-
                 self.entries = docs.compactMap { doc in
                     let data = doc.data()
                     let moodLabel = data["mood"] as? String ?? "Neutral"
@@ -183,14 +202,22 @@ struct JournalView: View {
                         mood: moodLabel,
                         moodEmoji: emojiFor(moodLabel),
                         dailyThoughts: data["dailyThoughts"] as? String ?? "",
-                        gratitude: data["gratitude"] as? String ?? "",
                         waterGlasses: data["waterGlasses"] as? Int ?? 0,
                         sleepHours: data["sleepHours"] as? Double ?? 0,
                         exerciseMinutes: data["exerciseMinutes"] as? Int ?? 0,
-                        mealsEaten: data["mealsEaten"] as? Int ?? 0
+                        mealsEaten: data["mealsEaten"] as? Int ?? 0,
+                        comments: data["comments"] as? String ?? ""
                     )
                 }
             }
+        
+    }
+    
+    private func todaysEntryIfExists() -> JournalEntrySummary? {
+        let calendar = Calendar.current
+        return entries.first { entry in
+            calendar.isDateInToday(entry.date)
+        }
     }
 
     private func emojiFor(_ mood: String) -> String {
@@ -248,6 +275,7 @@ struct JournalEntryRow: View {
 // Pushed via NavigationLink — tab bar remains visible at the bottom
 struct JournalEntryDetailView: View {
     let entry: JournalEntrySummary
+    @EnvironmentObject var session: SessionViewModel
 
     var body: some View {
         ZStack {
@@ -273,11 +301,21 @@ struct JournalEntryDetailView: View {
                     if !entry.dailyThoughts.isEmpty {
                         detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: entry.dailyThoughts)
                     }
-                    if !entry.gratitude.isEmpty {
-                        detailCard(icon: "heart.text.clipboard", title: "Gratitude", content: entry.gratitude)
+                    if !entry.comments.isEmpty {
+                        detailCard(icon: "heart.text.clipboard", title: "Comments", content: entry.comments)
                     }
 
                     wellnessSummary
+                    NavigationLink(destination: JournalEntryView(entryToEdit: entry)) {
+                        Text("Edit Journal")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color("AccentColor"))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .padding(.top, 8)
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)
@@ -285,6 +323,7 @@ struct JournalEntryDetailView: View {
         }
         .navigationTitle("Journal Entry")
         .navigationBarTitleDisplayMode(.inline)
+        
     }
 
     private func detailCard(icon: String, title: String, content: String) -> some View {

@@ -10,129 +10,167 @@ import FirebaseAuth
 import FirebaseFirestore
 
 struct ProfilePageView: View {
+    @EnvironmentObject var session: SessionViewModel
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
-    @EnvironmentObject var session: SessionViewModel
-    @State private var generatedCode = ""
     
+    
+    @State private var firstName = ""
+    @State private var lastName = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var bio = ""
+
     var body: some View {
         NavigationStack {
-            VStack {
-                if session.user?.role == "therapist" {
-                                Button("Generate Referral Code") {
-                                    if let uid = session.user?.uid {
-                                        createUniqueReferralCode(for: uid)
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
+            ZStack {
+                Color("AppBackground").ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 24) {
+
+                        // Profile Image
+                        VStack(spacing: 12) {
+                            Image("AppLogo") // replace with real image later
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 110, height: 110)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color("AccentColor"), lineWidth: 2)
+                                )
+
+                            Text("\(firstName) \(lastName)")
+                                .font(.title2.bold())
+                                .foregroundStyle(Color("AccentColor"))
+                        }
+
+                        // Info Card
+                        VStack(spacing: 16) {
+
+                            profileRow(title: "Email", value: email)
+                            profileRow(title: "Phone", value: phone.isEmpty ? "Not provided" : phone)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("About Me")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Text(bio.isEmpty ? "No bio yet." : bio)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(12)
+                                    .background(Color(.systemGray6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                            
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.95))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        
+                        NavigationLink {
+                            ProfileEditView()
+                        } label: {
+                            Text("Edit Profile")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
                                 .padding()
-                    HStack{
-                        TextField("Referral Code", text: $generatedCode)
-                            .keyboardType(.emailAddress)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .padding()
-                            .background(Color.white.opacity(0.9))
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .disabled(true)
+                                .foregroundStyle(Color("AccentColor"))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color("AccentColor"), lineWidth: 1.5)
+                                )
+                        }
                         Button {
-                                UIPasteboard.general.string = generatedCode
-                            } label: {
-                                Image(systemName: "doc.on.doc")
-                                    .foregroundStyle(Color("AccentColor"))
-                            }
-                            .disabled(generatedCode.isEmpty)
+                            logOut()
+                        } label: {
+                            Text("Log Out")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
                     }
-                    
-                            }
-                Button {
-                    logOut()
-                } label: {
-                    Text("Log Out")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color("AccentColor"))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .padding()
                 }
-                if session.user?.role == "patient" {
-                    Button {
-                        deleteAccount()
-                    } label: {
-                        Text("Delete Account")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color("AccentColor"))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                }
-            }.navigationTitle("Profile")
-            .alert("Error", isPresented: $showErrorAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(errorMessage)
             }
-            .padding()
-            
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                loadProfile()
+            }
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
     }
+
+    // MARK: - Reusable Row
+    private func profileRow(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+ 
     
-    func createUniqueReferralCode(for therapistId: String) {
+    private func loadProfile() {
+        guard let uid = session.user?.uid else {
+            errorMessage = "Unable to access user account."
+            showErrorAlert = true
+            return
+        }
+
+        guard let role = session.user?.role else {
+            errorMessage = "Unable to determine user role."
+            showErrorAlert = true
+            return
+        }
+        
+        let collectionName: String
+        if role == "patient" {
+            collectionName = "patients"
+        } else {
+            collectionName = "therapists"
+        }
+
         let db = Firestore.firestore()
-
-        let characters = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-        let code = String((0..<10).compactMap { _ in characters.randomElement() })
-
-        let globalRef = db.collection("referralCodes").document(code)
-        let therapistRef = db.collection("therapists").document(therapistId)
-
-        db.runTransaction({ transaction, errorPointer in
-            do {
-                let existingDoc = try transaction.getDocument(globalRef)
-
-                if existingDoc.exists {
-                    return false
-                }
-
-                transaction.setData([
-                    "code": code,
-                    "therapistId": therapistId,
-                    "used": false
-                ], forDocument: globalRef)
-
-                transaction.updateData([
-                    "referralCodes": FieldValue.arrayUnion([code])
-                ], forDocument: therapistRef)
-
-                return true
-            } catch let error as NSError {
-                errorPointer?.pointee = error
-                return nil
-            }
-        }) { result, error in
-            if let error = error {
-                let nsError = error as NSError
-
-                if nsError.domain == FirestoreErrorDomain {
-                    createUniqueReferralCode(for: therapistId)
+        db.collection(collectionName)
+            .document(uid)
+            .getDocument { snapshot, error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
                     return
                 }
 
-                errorMessage = error.localizedDescription
-                showErrorAlert = true
-                return
-            }
+                guard let data = snapshot?.data() else {
+                    errorMessage = "Profile data not found."
+                    showErrorAlert = true
+                    return
+                }
 
-            if let success = result as? Bool, success {
-                generatedCode = code
-            } else {
-                createUniqueReferralCode(for: therapistId)
+                firstName = data["firstName"] as? String ?? ""
+                lastName = data["lastName"] as? String ?? ""
+                email = data["email"] as? String ?? ""
+                phone = data["phone"] as? String ?? ""
+                bio = data["bio"] as? String ?? ""
             }
-        }
     }
+
+    
     
     func logOut() {
         do {
@@ -143,33 +181,6 @@ struct ProfilePageView: View {
             return
         }
     }
-    
-    func deleteAccount() {
-        if let user = Auth.auth().currentUser {
-
-            let db = Firestore.firestore()
-            if let uid = session.user?.uid {
-                db.collection("patients").document(uid).updateData([
-                    "active": false
-                ]) { error in
-                    if let error = error {
-                        errorMessage = error.localizedDescription
-                        showErrorAlert = true
-                        return
-                    }
-                }
-            }
-            user.delete { error in
-                if let error = error {
-                    errorMessage = error.localizedDescription
-                    showErrorAlert = true
-                } else {
-                    errorMessage = "Account Successfully Deleted."
-                    showErrorAlert = true
-                }
-            }
-        }
-    }
 }
 
-//used chatgpt 5.3 to aid in programming the code generation 
+

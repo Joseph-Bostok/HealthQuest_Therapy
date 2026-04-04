@@ -8,8 +8,13 @@
 
 import SwiftUI
 import PhotosUI
+import FirebaseAuth
+import FirebaseFirestore
+
 
 struct ProfileEditView: View {
+    //pull in static data
+    @EnvironmentObject var session: SessionViewModel
 
     // MARK: – Form state
     @State private var firstName:  String = ""
@@ -17,6 +22,10 @@ struct ProfileEditView: View {
     @State private var email:      String = ""
     @State private var phone:      String = ""
     @State private var bio:        String = ""
+    
+    //error message and state info
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
 
     // MARK: – Photo picker
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
@@ -89,6 +98,20 @@ struct ProfileEditView: View {
                         }
 
                         saveButton
+                        
+                        if session.user?.role == "patient" {
+                            Button {
+                                deleteAccount()
+                            } label: {
+                                Text("Delete Account")
+                                    .fontWeight(.semibold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color("AccentColor"))
+                                    .foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                        }
 
                         if saveSuccess {
                             Label("Profile saved!", systemImage: "checkmark.circle.fill")
@@ -110,12 +133,22 @@ struct ProfileEditView: View {
                     }
                 }
             }
+            .onAppear {
+                loadProfile()
+            }
             .alert("Discard changes?", isPresented: $showDiscardAlert) {
                 Button("Discard", role: .destructive) { dismiss() }
                 Button("Keep Editing", role: .cancel) { }
             }
+            .alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
+    
+    
 
     // MARK: – Profile picture section
     private var profilePictureSection: some View {
@@ -291,18 +324,135 @@ struct ProfileEditView: View {
 
         return valid
     }
-
-    // MARK: – Save
+    
     private func save() {
-        isSaving = true
-        // TODO: Firestore update here
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            isSaving = false
-            withAnimation { saveSuccess = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation { saveSuccess = false }
+        guard let uid = session.user?.uid else {
+            errorMessage = "Unable to access user account."
+            showErrorAlert = true
+            return
+        }
+
+        guard let role = session.user?.role else {
+            errorMessage = "Unable to determine user role."
+            showErrorAlert = true
+            return
+        }
+        
+     
+        
+        let currentAuthEmail = Auth.auth().currentUser?.email ?? ""
+        
+        if currentAuthEmail != email {
+            Auth.auth().currentUser?.updateEmail(to: email) { error in
+                 if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
             }
         }
+
+        let collectionName = (role == "therapist") ? "therapists" : "patients"
+
+        isSaving = true
+
+        let db = Firestore.firestore()
+        db.collection(collectionName)
+            .document(uid)
+            .updateData([
+                "firstName": firstName,
+                "lastName": lastName,
+                "email": email,
+                "phone": phone,
+                "bio": bio
+            ]) { error in
+                isSaving = false
+
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                } else {
+                    withAnimation { saveSuccess = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                        withAnimation { saveSuccess = false }
+                    }
+                }
+            }
+    }
+    
+    
+    
+    
+    func deleteAccount() {
+        if let user = Auth.auth().currentUser {
+
+            let db = Firestore.firestore()
+            if let uid = session.user?.uid {
+                db.collection("patients").document(uid).updateData([
+                    "active": false
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        return
+                    }
+                }
+            }
+            user.delete { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                } else {
+                    errorMessage = "Account Successfully Deleted."
+                    showErrorAlert = true
+                }
+            }
+        }
+    }
+    
+    
+    private func loadProfile() {
+        guard let uid = session.user?.uid else {
+            errorMessage = "Unable to access user account."
+            showErrorAlert = true
+            return
+        }
+
+        guard let role = session.user?.role else {
+            errorMessage = "Unable to determine user role."
+            showErrorAlert = true
+            return
+        }
+        
+        let collectionName: String
+        if role == "patient" {
+            collectionName = "patients"
+        } else {
+            collectionName = "therapists"
+        }
+
+        let db = Firestore.firestore()
+        db.collection(collectionName)
+            .document(uid)
+            .getDocument { snapshot, error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+
+                guard let data = snapshot?.data() else {
+                    errorMessage = "Profile data not found."
+                    showErrorAlert = true
+                    return
+                }
+
+                firstName = data["firstName"] as? String ?? ""
+                lastName = data["lastName"] as? String ?? ""
+                email = data["email"] as? String ?? ""
+                phone = data["phone"] as? String ?? ""
+                bio = data["bio"] as? String ?? ""
+            }
     }
 }
 
