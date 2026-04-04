@@ -27,6 +27,7 @@ struct JournalEntrySummary: Identifiable, Hashable {
 
 // MARK: - JournalView
 struct JournalView: View {
+    let patientId: String?
 
     @EnvironmentObject var session: SessionViewModel
 
@@ -38,6 +39,7 @@ struct JournalView: View {
     @State private var todaysEntry: JournalEntrySummary? = nil
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
+   
 
     private let db = Firestore.firestore()
     private let moodFilters = ["All", "😄", "🙂", "😐", "😕", "😞"]
@@ -77,7 +79,7 @@ struct JournalView: View {
                     } else {
                         List(filteredEntries) { entry in
                             // NavigationLink pushes detail — tab bar stays visible
-                            NavigationLink(destination: JournalEntryDetailView(entry: entry)) {
+                            NavigationLink(destination: JournalEntryDetailView(patientId: patientId, entry: entry)) {
                                 JournalEntryRow(entry: entry)
                             }
                             .listRowBackground(Color.clear)
@@ -91,23 +93,26 @@ struct JournalView: View {
                 }
                 
             }
-            .navigationTitle("My Journal")
+            .navigationTitle("Patient Journal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        guard !isLoading else { return }
-
-                        if let entry = todaysEntryIfExists() {
-                            errorMessage = "Journal already created today. Edit the existing journal :)"
-                            showErrorAlert = true
-                            todaysEntry = entry
-                        } else {
-                            showNewEntry = true
+                    
+                    if session.user?.role == "patient" {
+                        Button {
+                            guard !isLoading else { return }
+                            
+                            if let entry = todaysEntryIfExists() {
+                                errorMessage = "Journal already created today. Edit the existing journal :)"
+                                showErrorAlert = true
+                                todaysEntry = entry
+                            } else {
+                                showNewEntry = true
+                            }
+                        } label: {
+                            Image(systemName: "plus")
+                                .fontWeight(.semibold)
                         }
-                    } label: {
-                        Image(systemName: "plus")
-                            .fontWeight(.semibold)
                     }
                 }
             }
@@ -117,7 +122,7 @@ struct JournalView: View {
             }
             //used chatgpt 5.3 to help with pushing to existing journal entry if entry already exists for a given day
             .navigationDestination(item: $todaysEntry) { entry in
-                JournalEntryDetailView(entry: entry)
+                JournalEntryDetailView(patientId: patientId, entry: entry)
             }
         }.alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }
@@ -168,15 +173,17 @@ struct JournalView: View {
             Text(searchText.isEmpty ? "No entries yet" : "No results found")
                 .font(.title2.bold())
             Text(searchText.isEmpty
-                 ? "Tap + to write your first journal entry."
+                 ? "No Entries Found."
                  : "Try a different search or mood filter.")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             if searchText.isEmpty {
-                Button("Write First Entry") { showNewEntry = true }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color("AccentColor"))
+                if session.user?.role == "patient" {
+                    Button("Write First Entry") { showNewEntry = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color("AccentColor"))
+                }
             }
             Spacer()
         }
@@ -184,10 +191,11 @@ struct JournalView: View {
 
     // MARK: - Load Entries
     private func loadEntries() {
-        guard let uid = session.user?.uid else { return }
+       
+        
         isLoading = true
 
-        db.collection("journals").document(uid)
+        db.collection("journals").document(patientId ?? "")
             .collection("journalEntries")
             .order(by: "date", descending: true)
             .addSnapshotListener { snapshot, _ in
@@ -234,7 +242,8 @@ struct JournalView: View {
 // MARK: - Journal Entry Row
 struct JournalEntryRow: View {
     let entry: JournalEntrySummary
-
+    
+        
     var body: some View {
         HStack(spacing: 14) {
             VStack(spacing: 2) {
@@ -274,8 +283,16 @@ struct JournalEntryRow: View {
 // MARK: - Journal Entry Detail View
 // Pushed via NavigationLink — tab bar remains visible at the bottom
 struct JournalEntryDetailView: View {
+    let patientId: String?
+    
     let entry: JournalEntrySummary
     @EnvironmentObject var session: SessionViewModel
+    @State private var editableComment: String = ""
+    // Error message
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
+    
 
     var body: some View {
         ZStack {
@@ -297,32 +314,94 @@ struct JournalEntryDetailView: View {
                     .padding(18)
                     .background(Color.white.opacity(0.95))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
-
+                    
                     if !entry.dailyThoughts.isEmpty {
                         detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: entry.dailyThoughts)
+                    } else {
+                        detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: "No journal data yet")
                     }
-                    if !entry.comments.isEmpty {
-                        detailCard(icon: "heart.text.clipboard", title: "Comments", content: entry.comments)
+                    
+                    if session.user?.role == "therapist" {
+                        detailCardEditable(icon: "heart.text.clipboard", title: "Comments", text: $editableComment)
+                    } else {
+                        detailCard(
+                            icon: "heart.text.clipboard",
+                            title: "Comments",
+                            content: editableComment.isEmpty ? "Add a comment..." : editableComment
+                        )
                     }
 
                     wellnessSummary
-                    NavigationLink(destination: JournalEntryView(entryToEdit: entry)) {
-                        Text("Edit Journal")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color("AccentColor"))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .padding(.top, 8)
+                    if session.user?.role == "patient" {
+                        NavigationLink(destination: JournalEntryView(entryToEdit: entry)) {
+                            Text("Edit Journal")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .padding(.top, 8)
+                        }
+                    } else {
+                        Button {
+                            addComment()
+                        } label: {
+                            Text("Add Comment")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)
+            }.alert("Error", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .alert("Success", isPresented: $showSuccessAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .onAppear() {
+                
+                    editableComment = entry.comments
+                
             }
         }
         .navigationTitle("Journal Entry")
         .navigationBarTitleDisplayMode(.inline)
+        
+    }
+    
+    private func addComment() {
+        if editableComment != entry.comments {
+            let db = Firestore.firestore()
+            db.collection("journals")
+                .document(patientId ?? "")
+                .collection("journalEntries")
+                .document(entry.id)
+                .updateData([
+                    "comments": editableComment
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                    } else {
+                        errorMessage = "Comment added successfully"
+                        showSuccessAlert = true
+                    }
+                    }
+            
+        }
+        
+        
         
     }
 
@@ -335,6 +414,24 @@ struct JournalEntryDetailView: View {
                 .font(.body)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.white.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+    
+    private func detailCardEditable(icon: String, title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: icon)
+                .font(.headline)
+                .foregroundStyle(Color("AccentColor"))
+            TextEditor(text: text)
+                .frame(minHeight: 90, maxHeight: 200)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .background(Color(red: 0.914, green: 0.941, blue: 0.918))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -372,7 +469,4 @@ struct JournalEntryDetailView: View {
     }
 }
 
-#Preview {
-    JournalView()
-        .environmentObject(SessionViewModel())
-}
+

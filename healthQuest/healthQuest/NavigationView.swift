@@ -28,7 +28,7 @@ struct NavigationBarView: View {
             HomePageView(firstName: firstName)
                 .tabItem { Label("Home", systemImage: "house") }
 
-            JournalView()
+            JournalView(patientId: session.user?.uid)
                 .tabItem { Label("Journals", systemImage: "book") }
 
             ChatsView()
@@ -48,6 +48,9 @@ struct NavigationBarView: View {
         TabView {
             HomePageView(firstName: firstName)
                 .tabItem { Label("Home", systemImage: "house") }
+            
+            JournalReviewView()
+                .tabItem { Label("Patient Journals", systemImage: "book") }
 
             ChatsView()
                 .tabItem { Label("Clients", systemImage: "bubble.left.and.bubble.right") }

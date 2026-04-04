@@ -100,7 +100,7 @@ struct HomePageView: View {
                     NavigationLink(destination: ChatsView()) {
                         quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Active Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
-                    NavigationLink(destination: JournalView()) {
+                    NavigationLink(destination: JournalView(patientId: session.user?.uid)) {
                         quickActionCard(icon: "books.vertical.fill",       title: "My Journal", subtitle: "View past entries",    color: .teal)
                     }
                 }
