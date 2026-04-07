@@ -446,7 +446,7 @@ struct JournalEntryDetailView: View {
                 .foregroundStyle(Color("AccentColor"))
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                wellnessTile(icon: "drop.fill",    color: .blue,   label: "Water",    value: "\(entry.waterGlasses) glasses")
+                wellnessTile(icon: "drop.fill",    color: .blue,   label: "Water",    value: "\(entry.waterGlasses) ounces")
                 wellnessTile(icon: "moon.zzz.fill", color: .indigo, label: "Sleep",   value: String(format: "%.1f hrs", entry.sleepHours))
                 wellnessTile(icon: "figure.run",   color: .orange, label: "Exercise", value: "\(entry.exerciseMinutes) min")
                 wellnessTile(icon: "fork.knife",   color: .green,  label: "Meals",    value: "\(entry.mealsEaten) meals")
