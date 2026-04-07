@@ -109,7 +109,7 @@ struct ProfilePageView: View {
         }
     }
 
-    // MARK: - Reusable Row
+    
     private func profileRow(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
