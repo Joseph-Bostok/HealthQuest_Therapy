@@ -12,7 +12,7 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
-// MARK: - Models
+
 struct ChatRoom: Identifiable, Equatable {
     let id: String
     let clientId: String
@@ -39,7 +39,7 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     }
 }
 
-// MARK: - ChatsView (role-aware router)
+
 struct ChatsView: View {
     @EnvironmentObject var session: SessionViewModel
 
@@ -52,7 +52,7 @@ struct ChatsView: View {
     }
 }
 
-// MARK: - Therapist Chats List
+
 struct TherapistChatsView: View {
 
     @EnvironmentObject var session: SessionViewModel
@@ -136,7 +136,7 @@ struct TherapistChatsView: View {
     }
 }
 
-// MARK: - Patient Chats View
+
 struct PatientChatsView: View {
 
     @EnvironmentObject var session: SessionViewModel
@@ -225,7 +225,7 @@ struct PatientChatsView: View {
     }
 }
 
-// MARK: - Chat Room Row
+
 struct ChatRoomRow: View {
     let room: ChatRoom
     let isTherapistView: Bool
@@ -287,7 +287,7 @@ struct ChatRoomRow: View {
     }
 }
 
-// MARK: - Chat Detail View
+
 // Pushed via NavigationLink — tab bar remains visible
 struct ChatDetailView: View {
 
@@ -438,7 +438,7 @@ struct ChatDetailView: View {
     }
 }
 
-// MARK: - Message Bubble
+
 struct MessageBubble: View {
     let message: ChatMessage
     let isCurrentUser: Bool
@@ -476,7 +476,7 @@ struct MessageBubble: View {
     }
 }
 
-// MARK: - Rounded Corner Shape
+
 struct RoundedCornerShape: Shape {
     var radius: CGFloat
     var corners: UIRectCorner
