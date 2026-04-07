@@ -11,7 +11,7 @@
 import SwiftUI
 import FirebaseFirestore
 
-// MARK: - Therapist Profile Model
+
 struct TherapistProfile: Identifiable {
     let id: String
     let firstName: String
@@ -25,7 +25,7 @@ struct TherapistProfile: Identifiable {
     var initials: String { "\(firstName.prefix(1))\(lastName.prefix(1))".uppercased() }
 }
 
-// MARK: - TherapistDirectoryView
+
 struct TherapistDirectoryView: View {
 
     @EnvironmentObject var session: SessionViewModel
@@ -92,7 +92,7 @@ struct TherapistDirectoryView: View {
         }
     }
 
-    // MARK: - Empty State
+    
     private var emptyState: some View {
         VStack(spacing: 20) {
             Image(systemName: "person.3")
@@ -107,7 +107,7 @@ struct TherapistDirectoryView: View {
         }
     }
 
-    // MARK: - Load Therapists
+    
     private func loadTherapists() {
         isLoading = true
         db.collection("therapists").getDocuments { snapshot, _ in
@@ -129,7 +129,7 @@ struct TherapistDirectoryView: View {
     }
 }
 
-// MARK: - Therapist Card
+
 struct TherapistCard: View {
     let therapist: TherapistProfile
 
@@ -177,7 +177,7 @@ struct TherapistCard: View {
     }
 }
 
-// MARK: - Therapist Profile View
+
 // Pushed via NavigationLink — tab bar remains visible
 struct TherapistProfileView: View {
     let therapist: TherapistProfile
@@ -289,7 +289,7 @@ struct TherapistProfileView: View {
     }
 }
 
-// MARK: - Enter Referral Code View (sheet)
+
 struct EnterReferralView: View {
     @EnvironmentObject var session: SessionViewModel
     @Environment(\.dismiss) private var dismiss
