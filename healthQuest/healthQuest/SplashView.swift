@@ -28,7 +28,7 @@ struct SplashView: View {
             VStack(spacing: 0) {
                 Spacer()
                 
-                // MARK: – Logo
+                
                 Image("AppLogo")
                     .resizable()
                     .scaledToFit()
@@ -48,7 +48,7 @@ struct SplashView: View {
                 
                 Spacer().frame(height: 28)
                 
-                // MARK: – App name
+               
                 Text("HealthQuest")
                     .font(.system(size: 38, weight: .bold, design: .rounded))
                     .foregroundStyle(Color("AccentColor"))
@@ -57,7 +57,7 @@ struct SplashView: View {
                 
                 Spacer().frame(height: 8)
                 
-                // MARK: – Tagline
+                
                 Text("Your journey to wellness starts here")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -65,7 +65,7 @@ struct SplashView: View {
                 
                 Spacer().frame(height: 56)
                 
-                // MARK: – Loading dots
+               
                 HStack(spacing: 10) {
                     ForEach(0..<3, id: \.self) { index in
                         Circle()
@@ -85,7 +85,7 @@ struct SplashView: View {
         }
     }
 
-    // MARK: – Animation sequence (TWICE AS LONG)
+    
     private func runAnimations() {
         // 1. Logo fades + scales in
         withAnimation(.spring(response: 1.4, dampingFraction: 0.6).delay(0.2)) {
