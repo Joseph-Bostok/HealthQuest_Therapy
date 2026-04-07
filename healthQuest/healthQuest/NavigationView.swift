@@ -21,7 +21,7 @@ struct NavigationBarView: View {
         }
     }
 
-    // MARK: - Patient Tabs
+    
     // NavigationStack is owned by each tab's root view
     private var patientTabs: some View {
         TabView {
@@ -43,7 +43,7 @@ struct NavigationBarView: View {
         .tint(Color("AccentColor"))
     }
 
-    // MARK: - Therapist Tabs
+    
     private var therapistTabs: some View {
         TabView {
             HomePageView(firstName: firstName)
