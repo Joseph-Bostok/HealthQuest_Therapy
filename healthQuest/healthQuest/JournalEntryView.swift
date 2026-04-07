@@ -9,7 +9,7 @@
 import SwiftUI
 import FirebaseFirestore
 
-// MARK: – Mood enum
+
 enum Mood: String, CaseIterable, Identifiable {
     //TO DO: These are not currently functional
     case terrible = "😞"
@@ -31,7 +31,7 @@ enum Mood: String, CaseIterable, Identifiable {
     }
 }
 
-// MARK: – View
+
 struct JournalEntryView: View {
     @EnvironmentObject var session: SessionViewModel
     @Environment(\.dismiss) private var dismiss
@@ -114,7 +114,7 @@ struct JournalEntryView: View {
         }
     }
     
-    // MARK: – Date selector row
+    
     private var dateSelectorRow: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
@@ -156,7 +156,7 @@ struct JournalEntryView: View {
         }
     }
     
-    // MARK: – Journal text section
+    
     @ViewBuilder
     private func journalSection(
         icon: String,
@@ -198,7 +198,7 @@ struct JournalEntryView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     
-    // MARK: – Wellness section
+    
     private var wellnessSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Wellness Check-In")
@@ -342,7 +342,7 @@ struct JournalEntryView: View {
         }
     }
     
-    // MARK: – Metric slider helper
+    
     @ViewBuilder
     private func metricSlider(
         icon: String,
@@ -368,7 +368,7 @@ struct JournalEntryView: View {
         }
     }
     
-    // MARK: – Submit button
+    
     private var submitButton: some View {
         Button { submitEntry() } label: {
             Group {
@@ -413,7 +413,7 @@ struct JournalEntryView: View {
         }
     }
     
-    // MARK: – Submit
+    
     private func submitEntry() {
         isSubmitting = true
         let calendar = Calendar.current
