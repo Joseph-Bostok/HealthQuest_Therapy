@@ -217,9 +217,9 @@ struct JournalEntryView: View {
                     iconColor: .blue,
                     title: "Water",
                     value: $waterGlasses,
-                    range: 0...12,
+                    range: 0...128,
                     step: 1,
-                    format: { "\(Int($0)) glass\(Int($0) == 1 ? "" : "es")" }
+                    format: { "\(Int($0)) ounce\(Int($0) == 1 ? "" : "s")" }
                 )
                 
                 Divider()
@@ -230,7 +230,7 @@ struct JournalEntryView: View {
                     iconColor: .indigo,
                     title: "Sleep",
                     value: $sleepHours,
-                    range: 0...12,
+                    range: 0...24,
                     step: 0.5,
                     format: { String(format: "%.1f hr%@", $0, $0 == 1 ? "" : "s") }
                 )
@@ -243,7 +243,7 @@ struct JournalEntryView: View {
                     iconColor: .orange,
                     title: "Exercise",
                     value: $exerciseMinutes,
-                    range: 0...120,
+                    range: 0...240,
                     step: 5,
                     format: { "\(Int($0)) min" }
                 )

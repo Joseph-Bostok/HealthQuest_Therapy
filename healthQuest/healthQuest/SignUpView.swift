@@ -148,7 +148,7 @@ struct SignUpView: View {
             } message: {
                 Text(successMessage)
             }
-            .toolbar(.hidden, for: .navigationBar)
+            
         }
     }//view ends here
     
