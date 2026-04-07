@@ -16,7 +16,7 @@ struct ProfileEditView: View {
     //pull in static data
     @EnvironmentObject var session: SessionViewModel
 
-    // MARK: – Form state
+    
     @State private var firstName:  String = ""
     @State private var lastName:   String = ""
     @State private var email:      String = ""
@@ -27,17 +27,17 @@ struct ProfileEditView: View {
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
 
-    // MARK: – Photo picker
+    
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var profileImage: Image? = nil
 
-    // MARK: – Validation errors
+    
     @State private var firstNameError: String = ""
     @State private var lastNameError:  String = ""
     @State private var emailError:     String = ""
     @State private var phoneError:     String = ""
 
-    // MARK: – UI state
+    
     @State private var isSaving:      Bool = false
     @State private var saveSuccess:   Bool = false
     @State private var showDiscardAlert = false
@@ -150,7 +150,7 @@ struct ProfileEditView: View {
     
     
 
-    // MARK: – Profile picture section
+    
     private var profilePictureSection: some View {
         VStack(spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
@@ -198,7 +198,7 @@ struct ProfileEditView: View {
         }
     }
 
-    // MARK: – Reusable form section
+    
     @ViewBuilder
     private func formSection<Content: View>(
         title: String,
@@ -216,7 +216,7 @@ struct ProfileEditView: View {
         }
     }
 
-    // MARK: – Validated text field
+    
     @ViewBuilder
     private func validatedField(
         label: String,
@@ -253,7 +253,7 @@ struct ProfileEditView: View {
         }
     }
 
-    // MARK: – Bio text editor
+    
     private var bioField: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("About Me")
@@ -274,7 +274,7 @@ struct ProfileEditView: View {
         }
     }
 
-    // MARK: – Save button
+    
     private var saveButton: some View {
         Button {
             if validate() { save() }
@@ -295,7 +295,7 @@ struct ProfileEditView: View {
         .disabled(isSaving)
     }
 
-    // MARK: – Validation
+    
     @discardableResult
     private func validate() -> Bool {
         var valid = true
