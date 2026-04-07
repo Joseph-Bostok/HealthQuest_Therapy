@@ -10,21 +10,21 @@
 import SwiftUI
 import FirebaseFirestore
 
-// MARK: - Wellness Summary
+
 struct WellnessSummary {
     var recentMood: String = "😐"
     var streakDays: Int = 0
     var weeklyEntries: Int = 0
 }
 
-// therapist summary
+
 struct PatientSummary {
     var clients: Int = 0
     var unread: Int = 0
     var reviews: Int = 0
 }
 
-// MARK: - HomePageView
+
 struct HomePageView: View {
 
     @EnvironmentObject var session: SessionViewModel
@@ -63,7 +63,7 @@ struct HomePageView: View {
         }
     }
 
-    // MARK: - Header Card
+
     private var headerCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(timeGreeting())
@@ -82,7 +82,7 @@ struct HomePageView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    // MARK: - Patient Content
+
     private var patientContent: some View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
@@ -110,7 +110,7 @@ struct HomePageView: View {
         }
     }
 
-    // MARK: - Therapist Content
+
     private var therapistContent: some View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
@@ -136,7 +136,7 @@ struct HomePageView: View {
         }
     }
 
-    // MARK: - Stat Card
+
     private func statCard(icon: String, iconColor: Color, value: String, label: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: icon).font(.title2).foregroundStyle(iconColor)
@@ -149,7 +149,7 @@ struct HomePageView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Quick Action Card
+
     private func quickActionCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack {
@@ -166,7 +166,7 @@ struct HomePageView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Tip Card
+
     private var tipCard: some View {
         let tips: [(String, String)] = [
             ("lightbulb.fill", "Journaling for just 5 minutes a day can significantly improve emotional regulation over time."),
@@ -189,7 +189,7 @@ struct HomePageView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color("AccentColor").opacity(0.25), lineWidth: 1))
     }
 
-    // MARK: - Helpers
+
     private func timeGreeting() -> String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
