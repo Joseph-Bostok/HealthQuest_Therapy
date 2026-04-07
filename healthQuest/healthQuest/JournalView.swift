@@ -11,7 +11,7 @@
 import SwiftUI
 import FirebaseFirestore
 
-// MARK: - Journal Entry Summary Model
+
 struct JournalEntrySummary: Identifiable, Hashable {
     let id: String
     let date: Date
@@ -25,7 +25,7 @@ struct JournalEntrySummary: Identifiable, Hashable {
     let comments: String
 }
 
-// MARK: - JournalView
+
 struct JournalView: View {
     let patientId: String?
 
@@ -163,7 +163,7 @@ struct JournalView: View {
   //      }
   //  }
 
-    // MARK: - Empty State
+    
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
@@ -189,7 +189,7 @@ struct JournalView: View {
         }
     }
 
-    // MARK: - Load Entries
+    
     private func loadEntries() {
        
         
@@ -239,7 +239,7 @@ struct JournalView: View {
     }
 }
 
-// MARK: - Journal Entry Row
+
 struct JournalEntryRow: View {
     let entry: JournalEntrySummary
     
@@ -280,7 +280,7 @@ struct JournalEntryRow: View {
     }
 }
 
-// MARK: - Journal Entry Detail View
+
 // Pushed via NavigationLink — tab bar remains visible at the bottom
 struct JournalEntryDetailView: View {
     let patientId: String?
