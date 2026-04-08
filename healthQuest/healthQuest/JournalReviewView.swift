@@ -9,6 +9,7 @@ import SwiftUI
 import FirebaseFirestore
 
 struct TherapistClient: Identifiable, Hashable {
+    let active: Bool
     let id: String
     let firstName: String
     let lastName: String
@@ -98,25 +99,48 @@ struct JournalReviewView: View {
 
     private func clientRow(_ client: TherapistClient) -> some View {
         HStack(spacing: 14) {
-            Circle()
-                .fill(Color("AccentColor").opacity(0.15))
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(client.firstName.prefix(1).uppercased())
-                        .font(.title3.bold())
-                        .foregroundStyle(Color("AccentColor"))
-                )
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(client.fullName)
-                    .font(.headline)
-
-                Text(client.email)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            if client.active {
+                Circle()
+                    .fill(Color("AccentColor").opacity(0.15))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Text(client.firstName.prefix(1).uppercased())
+                            .font(.title3.bold())
+                            .foregroundStyle(Color("AccentColor"))
+                        
+                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(client.fullName)
+                        .font(.headline)
+                    
+                    Text(client.email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } else {
+                Circle()
+                    .fill(Color.red.opacity(0.15))
+                    .frame(width: 50, height: 50)
+                    .overlay(
+                        Text(client.firstName.prefix(1).uppercased())
+                            .font(.title3.bold())
+                            .foregroundStyle(Color.red)
+                        
+                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("INACTIVE: " + client.fullName)
+                        .font(.headline)
+                    
+                    Text(client.email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-
+            
             Spacer()
         }
         .padding(14)
@@ -186,6 +210,7 @@ struct JournalReviewView: View {
                     guard let data = snapshot?.data() else { return }
 
                     let client = TherapistClient(
+                        active: data["active"] as? Bool ?? true,
                         id: patientId,
                         firstName: data["firstName"] as? String ?? "",
                         lastName: data["lastName"] as? String ?? "",
