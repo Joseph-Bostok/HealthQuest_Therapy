@@ -20,6 +20,11 @@ struct ProfilePageView: View {
     @State private var email = ""
     @State private var phone = ""
     @State private var bio = ""
+    @State private var therapist = ""
+    @State private var therapistUID = ""
+    @State private var therapistfirstName = ""
+    @State private var therapistlastName = ""
+    @State private var showRatingAlert = false
 
     var body: some View {
         NavigationStack {
@@ -64,6 +69,21 @@ struct ProfilePageView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
                             
+                            if session.user?.role == "patient" {
+                                profileRow(title: "Therapist", value: therapist)
+                                Button {
+                                    showRatingAlert = true
+                                } label: {
+                                    Text("Rate my Therapist")
+                                        .fontWeight(.semibold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color("AccentColor"))
+                                        .foregroundStyle(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                            }
+                            
                         }
                         .padding(16)
                         .background(Color.white.opacity(0.95))
@@ -82,6 +102,7 @@ struct ProfilePageView: View {
                                         .stroke(Color("AccentColor"), lineWidth: 1.5)
                                 )
                         }
+                        
                         Button {
                             logOut()
                         } label: {
@@ -106,6 +127,16 @@ struct ProfilePageView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
+        }
+        .alert("Rate Your Therapist", isPresented: $showRatingAlert) {
+            Button("⭐️") { rateMyTherapist(1) }
+            Button("⭐️⭐️") { rateMyTherapist(2) }
+            Button("⭐️⭐️⭐️") { rateMyTherapist(3) }
+            Button("⭐️⭐️⭐️⭐️") { rateMyTherapist(4) }
+            Button("⭐️⭐️⭐️⭐️⭐️") { rateMyTherapist(5) }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Select a rating from 1 to 5 stars")
         }
     }
 
@@ -167,6 +198,34 @@ struct ProfilePageView: View {
                 email = data["email"] as? String ?? ""
                 phone = data["phone"] as? String ?? ""
                 bio = data["bio"] as? String ?? ""
+                
+                if role == "patient" {
+                    therapistUID = data["therapistID"] as? String ?? ""
+                    
+                    db.collection("therapists")
+                        .document(therapistUID)
+                        .getDocument { snapshot, error in
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                                return
+                            }
+                            
+                            guard let data = snapshot?.data() else {
+                                errorMessage = "user profile not found"
+                                showErrorAlert = true
+                                return
+                            }
+                            
+                            therapistfirstName = data["firstName"] as? String ?? ""
+                            therapistlastName = data["lastName"] as? String ?? ""
+                            therapist = "Dr. " + therapistfirstName + " " + therapistlastName
+                        }
+                    
+                    
+                }
+                
+                
             }
     }
 
@@ -180,6 +239,28 @@ struct ProfilePageView: View {
             showErrorAlert = true
             return
         }
+    }
+    
+    func rateMyTherapist(_ rating: Int) {
+        // To do (make a popup appear with a 1-5 star rating)
+        guard let uid = session.user?.uid else {
+            errorMessage = "Unable to access user account."
+            showErrorAlert = true
+            return
+        }
+        
+        let db = Firestore.firestore()
+        db.collection("reviews")
+            .document(therapistUID).collection("userReviews").document(uid)
+            .setData([
+                "rating": rating,
+                "updatedAt": Timestamp()
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                }
+            }
     }
 }
 

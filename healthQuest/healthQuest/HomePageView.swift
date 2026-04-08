@@ -11,17 +11,18 @@ import SwiftUI
 import FirebaseFirestore
 
 
-struct WellnessSummary {
+struct PatientSummary {
     var recentMood: String = "😐"
     var streakDays: Int = 0
     var weeklyEntries: Int = 0
 }
 
 
-struct PatientSummary {
+struct TherapistSummary {
     var clients: Int = 0
     var unread: Int = 0
     var reviews: Int = 0
+    var avgRating: Double = 0.0
 }
 
 
@@ -30,8 +31,8 @@ struct HomePageView: View {
     @EnvironmentObject var session: SessionViewModel
     let firstName: String
 
-    @State private var summary = WellnessSummary()
-    @State private var summary2 = PatientSummary()
+    @State private var summary = PatientSummary()
+    @State private var summary2 = TherapistSummary()
     @State private var isLoadingStats = true
 
     private let db = Firestore.firestore()
@@ -116,7 +117,7 @@ struct HomePageView: View {
             HStack(spacing: 14) {
                 statCard(icon: "person.2.fill",iconColor: Color("AccentColor"),value: "\(summary2.clients)", label: "Clients")
                 statCard(icon: "message.fill",iconColor: .teal, value: "--", label: "Unread")
-                statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.reviews)", label: "Reviews")
+                statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.avgRating)", label: "Rating")
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -231,9 +232,45 @@ struct HomePageView: View {
                        let array = data["patients"] as? [String] {
                         let count = array.count
                         summary2.clients = count
-                        summary2.reviews = 5
+                        
                     }
                 }
+        
+        db.collection("reviews")
+            .document(uid).collection("userReviews")
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    summary2.avgRating = 0
+                    return
+                }
+                
+                guard let docs = snapshot?.documents else {
+                    summary2.avgRating = 0
+                    return
+                }
+                
+                let ratings: [Double] = docs.compactMap { doc in
+                    let data = doc.data()
+                    
+                    if let rating = data["rating"] as? Double {
+                        return rating
+                    } else if let rating = data["rating"] as? Int {
+                        return Double(rating)
+                    } else {
+                        return nil
+                    }
+                }
+                
+                summary2.reviews = ratings.count
+                
+                if ratings.isEmpty {
+                    summary2.avgRating = 0.0
+                } else {
+                    let total = ratings.reduce(0, +)
+                    summary2.avgRating = total / Double(ratings.count)
+                }
+            }
+        
     }
     
     //used chatgpt 5.3 to generate behavior for calculating streak
