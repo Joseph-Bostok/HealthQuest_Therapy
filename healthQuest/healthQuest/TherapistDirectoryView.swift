@@ -17,9 +17,8 @@ struct TherapistProfile: Identifiable {
     let firstName: String
     let lastName: String
     let email: String
-    let specialties: [String]
     let bio: String
-    let acceptingClients: Bool
+
 
     var fullName: String { "\(firstName) \(lastName)" }
     var initials: String { "\(firstName.prefix(1))\(lastName.prefix(1))".uppercased() }
@@ -41,7 +40,7 @@ struct TherapistDirectoryView: View {
         if searchText.isEmpty { return therapists }
         return therapists.filter {
             $0.fullName.localizedCaseInsensitiveContains(searchText) ||
-            $0.specialties.joined().localizedCaseInsensitiveContains(searchText) ||
+            
             $0.bio.localizedCaseInsensitiveContains(searchText)
         }
     }
@@ -74,14 +73,14 @@ struct TherapistDirectoryView: View {
             .navigationTitle("Find a Therapist")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showReferralSheet = true
-                    } label: {
-                        Label("Referral Code", systemImage: "ticket")
-                            .font(.caption)
-                    }
-                }
+               // ToolbarItem(placement: .topBarTrailing) {
+                 //   Button {
+                 //       showReferralSheet = true
+                 //   } label: {
+                 //       Label("Referral Code", systemImage: "ticket")
+                 //           .font(.caption)
+                 //   }
+               // }
             }
             .onAppear(perform: loadTherapists)
             // Referral code entry is intentionally a sheet (focused modal task)
@@ -115,14 +114,13 @@ struct TherapistDirectoryView: View {
             guard let docs = snapshot?.documents else { return }
             self.therapists = docs.compactMap { doc in
                 let data = doc.data()
+                if session.user?.uid == doc.documentID {return nil}
                 return TherapistProfile(
                     id: doc.documentID,
                     firstName: data["firstName"] as? String ?? "",
                     lastName: data["lastName"] as? String ?? "",
                     email: data["email"] as? String ?? "",
-                    specialties: data["specialties"] as? [String] ?? [],
                     bio: data["bio"] as? String ?? "No bio provided.",
-                    acceptingClients: data["acceptingClients"] as? Bool ?? true
                 )
             }
         }
@@ -151,19 +149,13 @@ struct TherapistCard: View {
                 HStack {
                     Text("Dr. \(therapist.fullName)").font(.headline)
                     Spacer()
-                    if therapist.acceptingClients {
-                        Label("Open", systemImage: "checkmark.circle.fill")
-                            .font(.caption2.bold()).foregroundStyle(.green)
-                    } else {
-                        Label("Full", systemImage: "xmark.circle.fill")
-                            .font(.caption2.bold()).foregroundStyle(.secondary)
-                    }
+                    
+                        //Label("Open", systemImage: "checkmark.circle.fill")
+                         //   .font(.caption2.bold()).foregroundStyle(.green)
+                    
                 }
 
-                Text(therapist.specialties.isEmpty
-                     ? "General Therapy"
-                     : therapist.specialties.prefix(3).joined(separator: " · "))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                
 
                 if !therapist.bio.isEmpty {
                     Text(therapist.bio)
@@ -206,17 +198,12 @@ struct TherapistProfileView: View {
                             Text(therapist.email).font(.subheadline).foregroundStyle(.secondary)
                         }
 
-                        if therapist.acceptingClients {
-                            Label("Accepting New Clients", systemImage: "checkmark.circle.fill")
-                                .font(.caption.bold()).foregroundStyle(.green)
-                                .padding(.horizontal, 14).padding(.vertical, 6)
-                                .background(Color.green.opacity(0.1)).clipShape(Capsule())
-                        } else {
-                            Label("Not Accepting New Clients", systemImage: "xmark.circle.fill")
-                                .font(.caption.bold()).foregroundStyle(.secondary)
-                                .padding(.horizontal, 14).padding(.vertical, 6)
-                                .background(Color.secondary.opacity(0.1)).clipShape(Capsule())
-                        }
+                        
+                        //    Label("Accepting New Clients", systemImage: "checkmark.circle.fill")
+                       //         .font(.caption.bold()).foregroundStyle(.green)
+                        //        .padding(.horizontal, 14).padding(.vertical, 6)
+                        //        .background(Color.green.opacity(0.1)).clipShape(Capsule())
+                        
                     }
                     .frame(maxWidth: .infinity)
                     .padding(24)
@@ -238,42 +225,21 @@ struct TherapistProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                     }
 
-                    // Specialties
-                    if !therapist.specialties.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Specialties", systemImage: "star.fill")
-                                .font(.headline).foregroundStyle(Color("AccentColor"))
-                            // Simple wrapped tags
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
-                                ForEach(therapist.specialties, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.caption.bold())
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(Color("AccentColor").opacity(0.1))
-                                        .foregroundStyle(Color("AccentColor"))
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(18)
-                        .background(Color.white.opacity(0.95))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    }
+                  
 
                     // CTA
                     Button {
                         showReferralAlert = true
                     } label: {
-                        Label("Request to Connect", systemImage: "person.badge.plus")
+                        Label("Send a Message", systemImage: "person.badge.plus")
                             .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(therapist.acceptingClients ? Color("AccentColor") : Color.secondary.opacity(0.5))
+                            .background(Color("AccentColor"))
                             .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                    .disabled(!therapist.acceptingClients)
+                   
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)

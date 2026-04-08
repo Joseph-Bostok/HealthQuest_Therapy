@@ -54,6 +54,9 @@ struct NavigationBarView: View {
 
             ChatsView()
                 .tabItem { Label("Clients", systemImage: "bubble.left.and.bubble.right") }
+            
+            TherapistDirectoryView()
+                .tabItem { Label("Colleagues", systemImage: "person.3.fill") }
 
             ProfilePageView()
                 .tabItem { Label("Profile", systemImage: "person.circle") }
