@@ -291,6 +291,66 @@ struct SignUpView: View {
                     }
                 }
                 
+                db.collection("ai_chats").document(uid).collection("messages")
+                    .document().setData([
+                        "content": "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!",
+                        "flagged": false,
+                        "riskscore":0,
+                        "sender": "AI",
+                        "timestamp":Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+                }
+                
+                db.collection("ai_chats").document(uid)
+                    .setData([
+                        "lastMessage": "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!",
+                        "sender": "AI",
+                        "lastMessageAt": Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+                }
+                
+                db.collection("therapist_chats").document(uid).collection("messages")
+                    .document().setData([
+                        "content": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
+                        "sender": "therapist",
+                        "therapistID": therapistId,
+                        "clientName": firstName + " " + lastName,
+                        "timestamp": Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+                }
+                
+                db.collection("therapist_chats").document(uid)
+                    .setData([
+                        "lastMessage": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
+                        "sender": "therapist",
+                        "lastMessageAt": Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        isLoading = false
+                        return
+                    }
+                }
+                
                 ref.updateData([
                     "used": true
                 ]) { error in

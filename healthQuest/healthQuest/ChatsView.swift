@@ -15,15 +15,9 @@ import FirebaseFirestore
 
 struct ChatRoom: Identifiable, Equatable {
     let id: String
-    let clientId: String
     let clientName: String
-    let therapistId: String
     let lastMessage: String
     let lastMessageAt: Date
-    let unreadCount: Int
-    let hasMessages: Bool
-
-    var isUnread: Bool { unreadCount > 0 }
 }
 
 struct ChatMessage: Identifiable, Codable, Equatable {
@@ -54,7 +48,6 @@ struct ChatsView: View {
 
 
 struct TherapistChatsView: View {
-
     @EnvironmentObject var session: SessionViewModel
     @State private var chatRooms: [ChatRoom] = []
     @State private var isLoading = true
@@ -108,39 +101,52 @@ struct TherapistChatsView: View {
     }
 
     private func loadChatRooms() {
-        guard let therapistId = session.user?.uid, session.user?.role == "therapist" else { return }
-        isLoading = true
-
-        db.collection("chats")
-            .whereField("therapistId", isEqualTo: therapistId)
-            .addSnapshotListener { snapshot, _ in
+            guard let therapistId = session.user?.uid,
+                  session.user?.role == "therapist" else {
                 isLoading = false
-                guard let documents = snapshot?.documents else { return }
-
-                let rooms = documents.compactMap { doc -> ChatRoom? in
-                    let data = doc.data()
-                    let lastMsg = data["lastMessage"] as? String ?? ""
-                    return ChatRoom(
-                        id: doc.documentID,
-                        clientId: data["clientId"] as? String ?? "",
-                        clientName: data["clientName"] as? String ?? "Unknown Client",
-                        therapistId: data["therapistId"] as? String ?? "",
-                        lastMessage: lastMsg,
-                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
-                        unreadCount: data["unreadCount"] as? Int ?? 0,
-                        hasMessages: !lastMsg.isEmpty
-                    )
-                }
-                self.chatRooms = rooms.sorted { $0.lastMessageAt > $1.lastMessageAt }
+                return
             }
-    }
+
+            isLoading = true
+
+            db.collection("therapist_chats")
+                .whereField("therapistId", isEqualTo: therapistId)
+                .addSnapshotListener { snapshot, error in
+                    isLoading = false
+
+                    if let error = error {
+                        print("Error loading therapist chats: \(error.localizedDescription)")
+                        chatRooms = []
+                        return
+                    }
+
+                    guard let documents = snapshot?.documents else {
+                        chatRooms = []
+                        return
+                    }
+
+                    let rooms = documents.map { doc -> ChatRoom in
+                        let data = doc.data()
+
+                        return ChatRoom(
+                            id: doc.documentID,
+                            //To Do: fix this to display the client name
+                            clientName: data["clientName"] as? String ?? "Unknown Client",
+                            lastMessage: data["lastMessage"] as? String ?? "",
+                            lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        )
+                    }
+
+                    chatRooms = rooms.sorted { $0.lastMessageAt > $1.lastMessageAt }
+                }
+        }
 }
 
 
 struct PatientChatsView: View {
 
     @EnvironmentObject var session: SessionViewModel
-    @State private var chatRoom: ChatRoom? = nil
+    @State private var chatRooms: [ChatRoom] = []
     @State private var isLoading = true
 
     private let db = Firestore.firestore()
@@ -151,10 +157,19 @@ struct PatientChatsView: View {
                 Color("AppBackground").ignoresSafeArea()
 
                 if isLoading {
-                    ProgressView("Loading your chat...")
+                    ProgressView("Loading conversations...")
                         .tint(Color("AccentColor"))
-                } else if let room = chatRoom {
-                    List {
+                } else if chatRooms.isEmpty {
+                    VStack(spacing: 24) {
+                        Image(systemName: "bubble.left.and.bubble.right")
+                            .font(.system(size: 85))
+                            .foregroundStyle(.secondary)
+                        Text("No chats yet")
+                            .font(.title2.bold())
+                    }
+                    .padding(.horizontal, 40)
+                } else {
+                    List(chatRooms) { room in
                         NavigationLink(destination: ChatDetailView(chatRoom: room)) {
                             ChatRoomRow(room: room, isTherapistView: false)
                         }
@@ -164,90 +179,122 @@ struct PatientChatsView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                } else {
-                    noTherapistState
                 }
             }
-            .navigationTitle("My Therapist")
+            .navigationTitle("Clients")
             .navigationBarTitleDisplayMode(.inline)
-            .onAppear(perform: loadPatientChat)
-        }
-    }
-
-    private var noTherapistState: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "person.crop.circle.badge.questionmark")
-                .font(.system(size: 80))
-                .foregroundStyle(.secondary)
-            Text("No therapist yet")
-                .font(.title2.bold())
-            Text("Connect with a therapist using their referral code to start chatting.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 40)
-            NavigationLink(destination: TherapistDirectoryView()) {
-                Label("Find a Therapist", systemImage: "magnifyingglass")
-                    .fontWeight(.semibold)
-                    .padding()
-                    .background(Color("AccentColor"))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
-        }
-    }
-
-    private func loadPatientChat() {
-        guard let patientId = session.user?.uid, session.user?.role == "patient" else { return }
-        isLoading = true
-
-        db.collection("chats")
-            .whereField("clientId", isEqualTo: patientId)
-            .limit(to: 1)
-            .addSnapshotListener { snapshot, _ in
-                isLoading = false
-                guard let doc = snapshot?.documents.first else {
-                    chatRoom = nil
-                    return
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: loadPatientChats) {
+                        Image(systemName: "arrow.clockwise")
+                    }
                 }
-                let data = doc.data()
-                let lastMsg = data["lastMessage"] as? String ?? ""
-                chatRoom = ChatRoom(
-                    id: doc.documentID,
-                    clientId: data["clientId"] as? String ?? "",
-                    clientName: data["clientName"] as? String ?? "",
-                    therapistId: data["therapistId"] as? String ?? "",
-                    lastMessage: lastMsg,
-                    lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
-                    unreadCount: data["unreadCount"] as? Int ?? 0,
-                    hasMessages: !lastMsg.isEmpty
-                )
             }
+            .onAppear(perform: loadPatientChats)
+        }
     }
+
+    private func loadPatientChats() {
+            guard let patientId = session.user?.uid,
+                  session.user?.role == "patient" else {
+                isLoading = false
+                return
+            }
+
+            isLoading = true
+
+            var aiRoom: ChatRoom?
+            var therapistRoom: ChatRoom?
+
+            func updateRooms() {
+                var rooms: [ChatRoom] = []
+
+                if let aiRoom = aiRoom {
+                    rooms.append(aiRoom)
+                }
+
+                if let therapistRoom = therapistRoom {
+                    rooms.append(therapistRoom)
+                }
+
+                chatRooms = rooms.sorted { $0.lastMessageAt > $1.lastMessageAt }
+                isLoading = false
+            }
+
+            db.collection("ai_chats")
+                .document(patientId)
+                .addSnapshotListener { snapshot, error in
+                    if let error = error {
+                        print("Error loading AI chat: \(error.localizedDescription)")
+                        aiRoom = nil
+                        updateRooms()
+                        return
+                    }
+
+                    guard let data = snapshot?.data() else {
+                        aiRoom = nil
+                        updateRooms()
+                        return
+                    }
+
+                    aiRoom = ChatRoom(
+                        id: "ai_\(patientId)",
+                        clientName: "HealthQuest AI",
+                        lastMessage: data["lastMessage"] as? String ?? "",
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    )
+
+                    updateRooms()
+                }
+
+            db.collection("therapist_chats")
+                .document(patientId)
+                .addSnapshotListener { snapshot, error in
+                    if let error = error {
+                        print("Error loading therapist chat: \(error.localizedDescription)")
+                        therapistRoom = nil
+                        updateRooms()
+                        return
+                    }
+
+                    guard let data = snapshot?.data() else {
+                        therapistRoom = nil
+                        updateRooms()
+                        return
+                    }
+
+                    therapistRoom = ChatRoom(
+                        id: "therapist_\(patientId)",
+                        clientName: data["clientName"] as? String ?? "My Therapist",
+                        lastMessage: data["lastMessage"] as? String ?? "",
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                    )
+
+                    updateRooms()
+                }
+        }
 }
 
+// used chatgpt 5.3 for logic to load patient and client chat data into array
 
 struct ChatRoomRow: View {
     let room: ChatRoom
     let isTherapistView: Bool
-
-    var displayName: String {
-        isTherapistView ? room.clientName : "My Therapist"
-    }
-
+    
     var body: some View {
         HStack(spacing: 16) {
             Circle()
                 .fill(Color("AccentColor").opacity(0.15))
                 .frame(width: 52, height: 52)
                 .overlay(
-                    Text(displayName.prefix(1).uppercased())
+                    Text(room.clientName.prefix(1).uppercased())
                         .font(.title2.bold())
                         .foregroundStyle(Color("AccentColor"))
                 )
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Text(displayName)
+                    Text(room.clientName)
                         .font(.headline)
                     Spacer()
                     Text(timeAgoString(from: room.lastMessageAt))
@@ -255,22 +302,11 @@ struct ChatRoomRow: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text(room.hasMessages ? room.lastMessage : "Tap to start conversation")
+                Text(room.lastMessage)
                     .lineLimit(1)
                     .font(.subheadline)
-                    .foregroundStyle(room.hasMessages ? .secondary : .tertiary)
-                    .italic(!room.hasMessages)
-            }
-
-            if room.isUnread {
-                ZStack {
-                    Circle()
-                        .fill(Color("AccentColor"))
-                        .frame(width: 22, height: 22)
-                    Text("\(room.unreadCount)")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.white)
-                }
+                    .foregroundStyle(.tertiary)
+                    
             }
         }
         .padding(.vertical, 8)
@@ -300,7 +336,7 @@ struct ChatDetailView: View {
     private let db = Firestore.firestore()
 
     private var isTherapist: Bool { session.user?.role == "therapist" }
-    private var displayName: String { isTherapist ? chatRoom.clientName : "My Therapist" }
+    //private var displayName: String { isTherapist ? chatRoom.clientName : "My Therapist" }
 
     var body: some View {
         ZStack {
@@ -377,11 +413,11 @@ struct ChatDetailView: View {
                 .background(Color("AppBackground"))
             }
         }
-        .navigationTitle(displayName)
+        .navigationTitle(chatRoom.clientName)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             listenToMessages()
-            if chatRoom.hasMessages { markAsRead() }
+            //if chatRoom.hasMessages { markAsRead() }
         }
     }
 
