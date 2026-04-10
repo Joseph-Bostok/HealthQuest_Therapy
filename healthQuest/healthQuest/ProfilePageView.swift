@@ -82,6 +82,19 @@ struct ProfilePageView: View {
                                         .foregroundStyle(.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 14))
                                 }
+                                NavigationLink {
+                                    TherapistDirectoryView()
+                                } label: {
+                                    Text("Change my Therapist")
+                                        .fontWeight(.semibold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .foregroundStyle(Color("AccentColor"))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(Color("AccentColor"), lineWidth: 1.5)
+                                        )
+                                }
                             }
                             
                         }

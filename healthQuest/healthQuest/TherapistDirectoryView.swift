@@ -73,14 +73,16 @@ struct TherapistDirectoryView: View {
             .navigationTitle("Find a Therapist")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-               // ToolbarItem(placement: .topBarTrailing) {
-                 //   Button {
-                 //       showReferralSheet = true
-                 //   } label: {
-                 //       Label("Referral Code", systemImage: "ticket")
-                 //           .font(.caption)
-                 //   }
-               // }
+                if session.user?.role == "patient" {
+                     ToolbarItem(placement: .topBarTrailing) {
+                       Button {
+                          showReferralSheet = true
+                       } label: {
+                           Label("Referral Code", systemImage: "ticket")
+                               .font(.caption)
+                       }
+                     }
+                }
             }
             .onAppear(perform: loadTherapists)
             // Referral code entry is intentionally a sheet (focused modal task)
@@ -129,6 +131,7 @@ struct TherapistDirectoryView: View {
 
 
 struct TherapistCard: View {
+    @EnvironmentObject var session: SessionViewModel
     let therapist: TherapistProfile
 
     private let accentColors: [Color] = [Color("AccentColor"), .teal, .indigo, .purple, .mint]
@@ -150,9 +153,10 @@ struct TherapistCard: View {
                     Text("Dr. \(therapist.fullName)").font(.headline)
                     Spacer()
                     
-                        //Label("Open", systemImage: "checkmark.circle.fill")
-                         //   .font(.caption2.bold()).foregroundStyle(.green)
-                    
+                    if session.user?.role == "patient" {
+                        Label("Open", systemImage: "checkmark.circle.fill")
+                            .font(.caption2.bold()).foregroundStyle(.green)
+                    }
                 }
 
                 
@@ -198,12 +202,12 @@ struct TherapistProfileView: View {
                             Text(therapist.email).font(.subheadline).foregroundStyle(.secondary)
                         }
 
-                        
-                        //    Label("Accepting New Clients", systemImage: "checkmark.circle.fill")
-                       //         .font(.caption.bold()).foregroundStyle(.green)
-                        //        .padding(.horizontal, 14).padding(.vertical, 6)
-                        //        .background(Color.green.opacity(0.1)).clipShape(Capsule())
-                        
+                        if session.user?.role == "patient" {
+                               Label("Accepting New Clients", systemImage: "checkmark.circle.fill")
+                                     .font(.caption.bold()).foregroundStyle(.green)
+                                    .padding(.horizontal, 14).padding(.vertical, 6)
+                                   .background(Color.green.opacity(0.1)).clipShape(Capsule())
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(24)
@@ -228,16 +232,18 @@ struct TherapistProfileView: View {
                   
 
                     // CTA
-                    Button {
-                        showReferralAlert = true
-                    } label: {
-                        Label("Send a Message", systemImage: "person.badge.plus")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color("AccentColor"))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    if session.user?.role == "therapist" {
+                        Button {
+                            showReferralAlert = true
+                        } label: {
+                            Label("Send a Message", systemImage: "person.badge.plus")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color("AccentColor"))
+                                .foregroundStyle(.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
                     }
                    
                 }
@@ -264,6 +270,8 @@ struct EnterReferralView: View {
     @State private var isVerifying = false
     @State private var errorMessage = ""
     @State private var successMessage = ""
+    @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
 
     private let db = Firestore.firestore()
 
@@ -332,57 +340,181 @@ struct EnterReferralView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("Success", isPresented: $showSuccessAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(successMessage)
         }
     }
 
     private func verifyCode() {
-        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard !trimmed.isEmpty, let patient = session.user else { return }
+        let referralCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !referralCode.isEmpty, let uid = session.user?.uid else { return }
         isVerifying = true
         errorMessage = ""
-
-        let codeRef = db.collection("referralCodes").document(trimmed)
-        codeRef.getDocument { document, _ in
-            isVerifying = false
-            guard let doc = document, doc.exists else {
-                errorMessage = "Invalid or expired referral code."; return
+        
+        let firstName = session.user?.firstName ?? ""
+        let lastName = session.user?.lastName ?? ""
+        let fullName = firstName + " " + lastName
+        let welcomeMessage = "Hi " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)"
+        
+        let db = Firestore.firestore()
+        let referralRef = db.collection("referralCodes").document(referralCode)
+        let chatRef = db.collection("therapist_chats").document(uid)
+        let messagesRef = chatRef.collection("messages")
+        let patientRef = db.collection("patients").document(uid)
+        
+        referralRef.getDocument { document, error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                return
             }
-            guard let used = doc.data()?["used"] as? Bool, !used else {
-                errorMessage = "This code has already been used."; return
+            
+            guard let document = document, document.exists else {
+                errorMessage = "Invalid referral code."
+                showErrorAlert = true
+                return
             }
-            guard let therapistId = doc.data()?["therapistId"] as? String else {
-                errorMessage = "Something went wrong. Please try again."; return
+            
+            let used = document.get("used") as? Bool ?? false
+            let therapistId = document.get("therapistId") as? String ?? ""
+            
+            if used {
+                errorMessage = "This referral code has already been used."
+                showErrorAlert = true
+                return
             }
-
-            let patientName = "\(patient.firstName) \(patient.lastName)"
-            let chatId = "\(therapistId)_\(patient.uid)"
-            let batch = db.batch()
-
-            batch.updateData(["used": true, "usedBy": patient.uid], forDocument: codeRef)
-            batch.updateData([
-                "therapistId": therapistId,
-                "assignedPatients": FieldValue.arrayUnion([patient.uid])
-            ], forDocument: db.collection("patients").document(patient.uid))
-            batch.setData([
-                "therapistId": therapistId,
-                "clientId": patient.uid,
-                "clientName": patientName,
-                "lastMessage": "",
-                "lastMessageAt": Timestamp(date: Date()),
-                "unreadCount": 0
-            ], forDocument: db.collection("chats").document(chatId))
-
-            batch.commit { error in
+            
+            referralRef.updateData([
+                "used": true
+            ]) { error in
                 if let error = error {
                     errorMessage = error.localizedDescription
-                } else {
-                    successMessage = "Connected successfully!"
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { dismiss() }
+                    showErrorAlert = true
                 }
+            }
+            
+            chatRef.getDocument { snapshot, error in
+                if let data = snapshot?.data() {
+                    let oldTherapistId = data["therapistID"] as? String ?? ""
+                    
+                    db.collection("therapists").document(oldTherapistId).updateData([
+                        "patients": FieldValue.arrayRemove([uid])
+                    ]) { error in
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                            return
+                        }
+                    }
+                } else {
+                    errorMessage = "There is an error with your account"
+                    showErrorAlert = true
+                }
+            }
+            
+            db.collection("therapists").document(therapistId).updateData([
+                "patients": FieldValue.arrayUnion([uid])
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+            }
+            
+            patientRef.updateData([
+                "therapistID": therapistId
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+            }
+            
+            deleteMessages(for: uid) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+                
+                
+                messagesRef.document().setData([
+                    "content": welcomeMessage,
+                    "sender": "therapist",
+                    "therapistID": therapistId,
+                    "clientName": fullName,
+                    "timestamp": Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        return
+                    }
+                }
+                
+                chatRef.setData([
+                    "lastMessage": welcomeMessage,
+                    "sender": "therapist",
+                    "therapistID": therapistId,
+                    "lastMessageAt": Timestamp()
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                        return
+                    } else {
+                        isVerifying = false
+                        successMessage = "New therapist assigned!"
+                        dismiss()
+                        showSuccessAlert = true
+                    }
+                }
+            }
+            
+        }
+        
+    }
+    
+    func deleteMessages(for uid: String, completion: @escaping (Error?) -> Void) {
+        let db = Firestore.firestore()
+        let messagesRef = db.collection("therapist_chats")
+            .document(uid)
+            .collection("messages")
+
+        messagesRef.getDocuments { snapshot, error in
+            if let error = error {
+                completion(error)
+                return
+            }
+
+            guard let documents = snapshot?.documents else {
+                completion(nil)
+                return
+            }
+
+            let batch = db.batch()
+
+            for doc in documents {
+                batch.deleteDocument(doc.reference)
+            }
+
+            batch.commit { error in
+                completion(error)
             }
         }
     }
-}
+
+    }
+
 
 #Preview {
     TherapistDirectoryView()

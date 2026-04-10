@@ -341,6 +341,7 @@ struct SignUpView: View {
                     .setData([
                         "lastMessage": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
                         "sender": "therapist",
+                        "therapistID": therapistId,
                         "lastMessageAt": Timestamp()
                 ]) { error in
                     if let error = error {

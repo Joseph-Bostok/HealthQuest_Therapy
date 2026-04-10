@@ -16,7 +16,7 @@ struct ProfileEditView: View {
     //pull in static data
     @EnvironmentObject var session: SessionViewModel
 
-    
+   
     @State private var firstName:  String = ""
     @State private var lastName:   String = ""
     @State private var email:      String = ""
@@ -135,6 +135,13 @@ struct ProfileEditView: View {
             }
             .onAppear {
                 loadProfile()
+            }
+            .onChange(of: saveSuccess) { newValue in
+                if newValue {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                        dismiss()
+                    }
+                }
             }
             .alert("Discard changes?", isPresented: $showDiscardAlert) {
                 Button("Discard", role: .destructive) { dismiss() }
