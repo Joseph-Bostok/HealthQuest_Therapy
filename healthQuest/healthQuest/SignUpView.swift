@@ -309,6 +309,8 @@ struct SignUpView: View {
                 
                 db.collection("ai_chats").document(uid)
                     .setData([
+                        
+                        "clientName": firstName + " " + lastName,
                         "lastMessage": "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!",
                         "sender": "AI",
                         "lastMessageAt": Timestamp()
@@ -341,6 +343,7 @@ struct SignUpView: View {
                     .setData([
                         "lastMessage": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
                         "sender": "therapist",
+                        "clientName": firstName + " " + lastName,
                         "therapistID": therapistId,
                         "lastMessageAt": Timestamp()
                 ]) { error in

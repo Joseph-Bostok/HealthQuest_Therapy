@@ -29,7 +29,6 @@ struct TherapistSummary {
 struct HomePageView: View {
 
     @EnvironmentObject var session: SessionViewModel
-    let firstName: String
 
     @State private var summary = PatientSummary()
     @State private var summary2 = TherapistSummary()
@@ -70,9 +69,15 @@ struct HomePageView: View {
             Text(timeGreeting())
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("Hello, \(session.user?.firstName ?? firstName)! 👋")
-                .font(.system(.title, design: .rounded, weight: .bold))
-                .foregroundStyle(Color("AccentColor"))
+            if session.user?.role == "patient" {
+                Text("Hello, \(session.user?.firstName ?? "")! 👋")
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .foregroundStyle(Color("AccentColor"))
+            } else {
+                Text("Hello, Dr. \(session.user?.lastName ?? "")! 👋")
+                    .font(.system(.title, design: .rounded, weight: .bold))
+                    .foregroundStyle(Color("AccentColor"))
+            }
             Text(Date().formatted(.dateTime.weekday(.wide).month(.wide).day()))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -98,7 +103,7 @@ struct HomePageView: View {
                     .foregroundStyle(Color("AccentColor"))
 
                 HStack(spacing: 12) {
-                    NavigationLink(destination: ChatsView()) {
+                    NavigationLink(destination: PatientChatsView()) {
                         quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Active Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
                     NavigationLink(destination: JournalView(patientId: session.user?.uid)) {
@@ -116,7 +121,7 @@ struct HomePageView: View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
                 statCard(icon: "person.2.fill",iconColor: Color("AccentColor"),value: "\(summary2.clients)", label: "Clients")
-                statCard(icon: "message.fill",iconColor: .teal, value: "--", label: "Unread")
+                statCard(icon: "message.fill",iconColor: .red, value: "--", label: "Flags")
                 statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.avgRating)", label: "Rating")
             }
 
@@ -126,7 +131,7 @@ struct HomePageView: View {
                     .foregroundStyle(Color("AccentColor"))
 
                 HStack(spacing: 12) {
-                    NavigationLink(destination: ChatsView()) {
+                    NavigationLink(destination: TherapistChatOptionsView()) {
                         quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Client Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
                     NavigationLink(destination: GenerateReferralCode()) {
@@ -239,7 +244,7 @@ struct HomePageView: View {
         db.collection("reviews")
             .document(uid).collection("userReviews")
             .addSnapshotListener { snapshot, error in
-                if let error = error {
+                if let _ = error {
                     summary2.avgRating = 0
                     return
                 }
@@ -322,6 +327,6 @@ struct HomePageView: View {
 }
 
 #Preview {
-    HomePageView(firstName: "Alex")
+    HomePageView()
         .environmentObject(SessionViewModel())
 }

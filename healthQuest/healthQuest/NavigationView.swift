@@ -25,13 +25,13 @@ struct NavigationBarView: View {
     // NavigationStack is owned by each tab's root view
     private var patientTabs: some View {
         TabView {
-            HomePageView(firstName: firstName)
+            HomePageView()
                 .tabItem { Label("Home", systemImage: "house") }
 
             JournalView(patientId: session.user?.uid)
                 .tabItem { Label("Journals", systemImage: "book") }
 
-            ChatsView()
+            PatientChatsView()
                 .tabItem { Label("Chats", systemImage: "message") }
 
            // TherapistDirectoryView()
@@ -46,17 +46,17 @@ struct NavigationBarView: View {
     
     private var therapistTabs: some View {
         TabView {
-            HomePageView(firstName: firstName)
+            HomePageView()
                 .tabItem { Label("Home", systemImage: "house") }
             
             JournalReviewView()
                 .tabItem { Label("Patient Journals", systemImage: "book") }
 
-            ChatsView()
-                .tabItem { Label("Clients", systemImage: "bubble.left.and.bubble.right") }
+            TherapistChatOptionsView()
+                .tabItem { Label("Chats", systemImage: "bubble.left.and.bubble.right") }
             
             TherapistDirectoryView()
-                .tabItem { Label("Colleagues", systemImage: "person.3.fill") }
+                .tabItem { Label("Providers", systemImage: "person.3.fill") }
 
             ProfilePageView()
                 .tabItem { Label("Profile", systemImage: "person.circle") }

@@ -179,6 +179,9 @@ struct TherapistProfileView: View {
     let therapist: TherapistProfile
     @EnvironmentObject var session: SessionViewModel
     @State private var showReferralAlert = false
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    @State private var goToChats = false
 
     var body: some View {
         ZStack {
@@ -234,7 +237,7 @@ struct TherapistProfileView: View {
                     // CTA
                     if session.user?.role == "therapist" {
                         Button {
-                            showReferralAlert = true
+                            startProviderChat()
                         } label: {
                             Label("Send a Message", systemImage: "person.badge.plus")
                                 .fontWeight(.semibold)
@@ -250,14 +253,61 @@ struct TherapistProfileView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 24)
             }
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+        .navigationDestination(isPresented: $goToChats) {
+            TherapistChatsView(chatType: "providers")
         }
         .navigationTitle("Therapist Profile")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Request a Referral Code", isPresented: $showReferralAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Ask Dr. \(therapist.fullName) for a referral code to connect with them in HealthQuest.")
-        }
+    }
+    
+    func startProviderChat() {
+        let db = Firestore.firestore()
+        let name = (session.user?.firstName ?? "") + " " + (session.user?.lastName ?? "")
+        let uid = session.user?.uid ?? ""
+        
+        //make sure the chat doesnt already exist
+        db.collection("provider_chats")
+            .whereField("therapist1", isEqualTo: uid)
+            .whereField("therapist2", isEqualTo: therapist.id)
+            .getDocuments { snapshot, error in
+                if let _ = snapshot?.documents.first {
+                    //TO DO: go to correct chat
+                    goToChats = true
+                } else {
+                    db.collection("provider_chats")
+                        .whereField("therapist1", isEqualTo: therapist.id)
+                        .whereField("therapist2", isEqualTo: uid)
+                        .getDocuments { snapshot, error in
+                            if let _ = snapshot?.documents.first {
+                                //TO DO: go to correct chat
+                                goToChats = true
+                            } else {
+                                db.collection("provider_chats").document()
+                                    .setData([
+                                        "therapist1": session.user?.uid ?? "",
+                                        "therapist1name": name,
+                                        "therapist2": therapist.id,
+                                        "therapist2name": therapist.fullName,
+                                        "timestamp": Timestamp()
+                                ]) { error in
+                                    if let error = error {
+                                        errorMessage = error.localizedDescription
+                                        showErrorAlert = true
+                                        return
+                                    } else {
+                                        //TO DO: go to correct chat
+                                        goToChats = true
+                                    }
+                                }
+                            }
+                        }
+                }
+            }
     }
 }
 
@@ -465,6 +515,7 @@ struct EnterReferralView: View {
                     "lastMessage": welcomeMessage,
                     "sender": "therapist",
                     "therapistID": therapistId,
+                    "clientName": fullName,
                     "lastMessageAt": Timestamp()
                 ]) { error in
                     if let error = error {
