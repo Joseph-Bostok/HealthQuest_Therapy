@@ -15,8 +15,10 @@ struct SignUpView: View {
     @State private var errorMessage = ""
     @State private var isLoading = false
     @State private var showErrorAlert = false
-    @State private var showSuccessAlert = false
-    @State private var successMessage = ""
+
+    // FIX: Removed showSuccessAlert/successMessage — navigation now happens
+    // automatically via SessionViewModel's auth listener, same as login.
+    // Showing a success alert and then doing nothing was a UX dead-end.
 
     @State private var firstNameError: String = ""
     @State private var lastNameError: String = ""
@@ -28,146 +30,151 @@ struct SignUpView: View {
     private let fieldBg = Color(red: 0.914, green: 0.941, blue: 0.918)
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color("AppBackground")
-                    .ignoresSafeArea()
+        // FIX: Removed NavigationStack from here. SignUpView is always pushed
+        // inside UserRoleView's NavigationStack. Nesting NavigationStacks
+        // causes undefined behavior and crashes on iOS 16+.
+        ZStack {
+            Color("AppBackground")
+                .ignoresSafeArea()
 
-                VStack {
-                    Spacer()
+            VStack {
+                Spacer()
 
-                    VStack(spacing: 16) {
-                        Image("AppLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 140, height: 140)
+                VStack(spacing: 16) {
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 140, height: 140)
 
-                        Text("Welcome To")
-                            .font(.title.bold())
-                            .foregroundStyle(Color("AccentColor"))
+                    Text("Welcome To")
+                        .font(.title.bold())
+                        .foregroundStyle(Color("AccentColor"))
 
-                        Text("HealthQuest")
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(Color("AccentColor"))
+                    Text("HealthQuest")
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(Color("AccentColor"))
 
-                        Text("Sign up to continue")
-                            .foregroundStyle(.secondary)
-                    }
+                    Text("Sign up to continue")
+                        .foregroundStyle(.secondary)
+                }
 
-                    Spacer()
+                Spacer()
 
-                    // Scrollable Form + Gradient
-                    ZStack(alignment: .bottom) {
-                        ScrollView {
-                            VStack(spacing: 20) {
+                // Scrollable Form + Gradient
+                ZStack(alignment: .bottom) {
+                    ScrollView {
+                        VStack(spacing: 20) {
 
+                            validatedField(
+                                label: "First Name",
+                                text: $firstName,
+                                error: firstNameError,
+                                keyboard: .default,
+                                isSecure: false,
+                                capitalization: .words
+                            )
+
+                            validatedField(
+                                label: "Last Name",
+                                text: $lastName,
+                                error: lastNameError,
+                                keyboard: .default,
+                                isSecure: false,
+                                capitalization: .words
+                            )
+
+                            validatedField(
+                                label: "Email",
+                                text: $email,
+                                error: emailError,
+                                keyboard: .emailAddress,
+                                isSecure: false,
+                                capitalization: .never
+                            )
+
+                            validatedField(
+                                label: "Password",
+                                text: $password,
+                                error: passwordError,
+                                keyboard: .default,
+                                isSecure: true,
+                                capitalization: .never
+                            )
+
+                            if selectedRole == .patient {
+                                DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
+                            }
+
+                            if selectedRole == .patient {
                                 validatedField(
-                                    label: "First Name",
-                                    text: $firstName,
-                                    error: firstNameError,
+                                    label: "Referral Code",
+                                    text: $referralCode,
+                                    error: referralCodeError,
                                     keyboard: .default,
-                                    isSecure: false,
-                                    capitalization: .words
-                                )
-
-                                validatedField(
-                                    label: "Last Name",
-                                    text: $lastName,
-                                    error: lastNameError,
-                                    keyboard: .default,
-                                    isSecure: false,
-                                    capitalization: .words
-                                )
-
-                                validatedField(
-                                    label: "Email",
-                                    text: $email,
-                                    error: emailError,
-                                    keyboard: .emailAddress,
                                     isSecure: false,
                                     capitalization: .never
                                 )
+                            }
 
+                            if selectedRole == .therapist {
                                 validatedField(
-                                    label: "Password",
-                                    text: $password,
-                                    error: passwordError,
+                                    label: "Medical License #",
+                                    text: $medicalLicenseNum,
+                                    error: licenseError,
                                     keyboard: .default,
-                                    isSecure: true,
+                                    isSecure: false,
                                     capitalization: .never
                                 )
+                            }
 
-                                if selectedRole == .patient {
-                                    DatePicker("Birthdate", selection: $birthdate, displayedComponents: .date)
+                            // FIX: Button now shows spinner for both roles, and is
+                            // disabled during the async operation.
+                            Button {
+                                if validate() { signUp() }
+                            } label: {
+                                Group {
+                                    if isLoading {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Text("Sign Up")
+                                    }
                                 }
-
-                                if selectedRole == .patient {
-                                    validatedField(
-                                        label: "Referral Code",
-                                        text: $referralCode,
-                                        error: referralCodeError,
-                                        keyboard: .default,
-                                        isSecure: false,
-                                        capitalization: .never
-                                    )
-                                }
-
-                                if selectedRole == .therapist {
-                                    validatedField(
-                                        label: "Medical License #",
-                                        text: $medicalLicenseNum,
-                                        error: licenseError,
-                                        keyboard: .default,
-                                        isSecure: false,
-                                        capitalization: .never
-                                    )
-                                }
-
-                                Button(isLoading ? "Creating Account..." : "Sign Up") {
-                                    if validate() { signUp() }
-                                }
-                                .disabled(isLoading)
                                 .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
                                 .padding()
                                 .background(Color("AccentColor"))
                                 .foregroundStyle(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                                .padding(.top, 8)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
+                            .disabled(isLoading)
+                            .padding(.top, 8)
                         }
-                        .scrollDismissesKeyboard(.interactively)
-
-                        LinearGradient(
-                            colors: [Color.clear, Color("AppBackground")],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: 40)
-                        .allowsHitTesting(false)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 40)
                     }
+                    .scrollDismissesKeyboard(.interactively)
 
-                    Spacer()
+                    LinearGradient(
+                        colors: [Color.clear, Color("AppBackground")],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 40)
+                    .allowsHitTesting(false)
                 }
-                .frame(maxHeight: .infinity)
-                .padding(.vertical)
-            }
-            .alert("Error", isPresented: $showErrorAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(errorMessage)
-            }
-            .alert("Success", isPresented: $showSuccessAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(successMessage)
-            }
-        }
-    } //view ends here
 
-    //chatgpt 5.3 used to help with restructuring UI here and fixing issues with device compatibility
+                Spacer()
+            }
+            .frame(maxHeight: .infinity)
+            .padding(.vertical)
+        }
+        .alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+    } // view ends here
 
     @ViewBuilder
     private func validatedField(
@@ -241,8 +248,14 @@ struct SignUpView: View {
             valid = false
         } else { emailError = "" }
 
-        if password.trimmingCharacters(in: .whitespaces).isEmpty {
+        // FIX: Added 6-character minimum to match Firebase's requirement,
+        // giving the user a clear inline message instead of a Firebase error.
+        let trimmedPassword = password.trimmingCharacters(in: .whitespaces)
+        if trimmedPassword.isEmpty {
             passwordError = "Password is required."
+            valid = false
+        } else if trimmedPassword.count < 6 {
+            passwordError = "Password must be at least 6 characters."
             valid = false
         } else { passwordError = "" }
 
@@ -298,6 +311,9 @@ struct SignUpView: View {
         referralCode = referralCode.trimmingCharacters(in: .whitespaces)
         medicalLicenseNum = medicalLicenseNum.trimmingCharacters(in: .whitespaces)
 
+        // FIX: isLoading is now set for both roles before any async work begins.
+        isLoading = true
+
         if selectedRole == .patient {
             signUpPatient()
         } else {
@@ -313,12 +329,14 @@ struct SignUpView: View {
             if let error = error {
                 errorMessage = error.localizedDescription
                 showErrorAlert = true
+                isLoading = false
                 return
             }
 
             guard let document = document, document.exists else {
                 errorMessage = "Invalid referral code."
                 showErrorAlert = true
+                isLoading = false
                 return
             }
 
@@ -328,10 +346,9 @@ struct SignUpView: View {
             if used {
                 errorMessage = "This referral code has already been used."
                 showErrorAlert = true
+                isLoading = false
                 return
             }
-
-            isLoading = true
 
             Auth.auth().createUser(withEmail: email, password: password) { result, error in
                 if let error = error {
@@ -350,7 +367,12 @@ struct SignUpView: View {
 
                 let uid = user.uid
 
-                let data: [String: Any] = [
+                // FIX: Use a WriteBatch so all Firestore writes succeed or fail together.
+                // This prevents the broken half-created state where a Firebase Auth
+                // account exists but Firestore data is missing.
+                let batch = db.batch()
+
+                let patientData: [String: Any] = [
                     "firstName": firstName,
                     "lastName": lastName,
                     "email": email,
@@ -360,103 +382,64 @@ struct SignUpView: View {
                     "therapistID": therapistId,
                     "bio": ""
                 ]
+                batch.setData(patientData, forDocument: db.collection("patients").document(uid))
 
-                db.collection("patients").document(uid).setData(data) { error in
-                    if let error = error {
-                        errorMessage = error.localizedDescription
-                        showErrorAlert = true
-                        isLoading = false
-                        return
-                    }
-                }
+                batch.updateData(
+                    ["patients": FieldValue.arrayUnion([uid])],
+                    forDocument: db.collection("therapists").document(therapistId)
+                )
 
-                db.collection("therapists").document(therapistId).updateData([
-                    "patients": FieldValue.arrayUnion([uid])
-                ]) { error in
-                    if let error = error {
-                        errorMessage = error.localizedDescription
-                        showErrorAlert = true
-                        isLoading = false
-                        return
-                    }
-                }
+                let aiWelcomeMessage = "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!"
+                let aiMessageRef = db.collection("ai_chats").document(uid).collection("messages").document()
+                batch.setData([
+                    "content": aiWelcomeMessage,
+                    "flagged": false,
+                    "riskscore": 0,
+                    "sender": "AI",
+                    "timestamp": Timestamp(),
+                    "read": false
+                ], forDocument: aiMessageRef)
 
-                db.collection("ai_chats").document(uid).collection("messages")
-                    .document().setData([
-                        "content": "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!",
-                        "flagged": false,
-                        "riskscore": 0,
-                        "sender": "AI",
-                        "timestamp": Timestamp(),
-                        "read": false
-                    ]) { error in
-                        if let error = error {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
-                            isLoading = false
-                            return
-                        }
-                    }
+                batch.setData([
+                    "clientName": firstName + " " + lastName,
+                    "lastMessage": aiWelcomeMessage,
+                    "sender": "AI",
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+                ], forDocument: db.collection("ai_chats").document(uid))
 
-                db.collection("ai_chats").document(uid)
-                    .setData([
-                        "clientName": firstName + " " + lastName,
-                        "lastMessage": "Welcome to HealthQuest! I am your chat assistant! Feel free to send me a message whenever you are ready! I am here to help!",
-                        "sender": "AI",
-                        "lastMessageAt": Timestamp(),
-                        "read": false
-                    ]) { error in
-                        if let error = error {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
-                            isLoading = false
-                            return
-                        }
-                    }
+                let therapistWelcomeMessage = "Thank you for creating your account \(firstName)! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)"
+                let therapistMessageRef = db.collection("therapist_chats").document(uid).collection("messages").document()
+                batch.setData([
+                    "content": therapistWelcomeMessage,
+                    "sender": therapistId,
+                    "timestamp": Timestamp(),
+                    "read": false
+                ], forDocument: therapistMessageRef)
 
-                db.collection("therapist_chats").document(uid).collection("messages")
-                    .document().setData([
-                        "content": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
-                        //\"sender\": \"therapist\",
-                        "sender": therapistId,
-                        //\"clientName\": firstName + \" \" + lastName,
-                        "timestamp": Timestamp(),
-                        "read": false
-                    ]) { error in
-                        if let error = error {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
-                            isLoading = false
-                            return
-                        }
-                    }
+                batch.setData([
+                    "lastMessage": therapistWelcomeMessage,
+                    "sender": therapistId,
+                    "clientName": firstName + " " + lastName,
+                    "therapistID": therapistId,
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+                ], forDocument: db.collection("therapist_chats").document(uid))
 
-                db.collection("therapist_chats").document(uid)
-                    .setData([
-                        "lastMessage": "Thank you for creating your account " + firstName + "! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)",
-                        "sender": therapistId,
-                        "clientName": firstName + " " + lastName,
-                        "therapistID": therapistId,
-                        "lastMessageAt": Timestamp(),
-                        "read": false
-                    ]) { error in
-                        if let error = error {
-                            errorMessage = error.localizedDescription
-                            showErrorAlert = true
-                            isLoading = false
-                            return
-                        }
-                    }
+                batch.updateData(["used": true], forDocument: ref)
 
-                ref.updateData(["used": true]) { error in
+                batch.commit { error in
                     isLoading = false
+
                     if let error = error {
-                        errorMessage = error.localizedDescription
+                        // FIX: If the batch fails, delete the Firebase Auth user
+                        // so the account doesn't exist in a broken state.
+                        user.delete { _ in }
+                        errorMessage = "Account setup failed. Please try again.\n\n(\(error.localizedDescription))"
                         showErrorAlert = true
-                    } else {
-                        successMessage = "Patient Account Created and linked to Therapist!"
-                        showSuccessAlert = true
                     }
+                    // On success, SessionViewModel's auth listener fires automatically
+                    // and RootView navigates to the home screen — no manual navigation needed.
                 }
             }
         }
@@ -464,6 +447,7 @@ struct SignUpView: View {
 
     func signUpTherapist() {
         let db = Firestore.firestore()
+
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error {
                 errorMessage = error.localizedDescription
@@ -492,18 +476,22 @@ struct SignUpView: View {
 
             db.collection("therapists").document(uid).setData(data) { error in
                 isLoading = false
+
                 if let error = error {
-                    errorMessage = error.localizedDescription
+                    // FIX: Delete the Auth user if the Firestore write fails,
+                    // so the account isn't left in a broken state.
+                    user.delete { _ in }
+                    errorMessage = "Account setup failed. Please try again.\n\n(\(error.localizedDescription))"
                     showErrorAlert = true
-                } else {
-                    successMessage = "Therapist Account Created!"
-                    showSuccessAlert = true
                 }
+                // On success, SessionViewModel's auth listener fires automatically
+                // and RootView navigates to the home screen — no manual navigation needed.
             }
         }
     }
 
-} //struct end here
+} // struct end
+
 // used chatgpt 5.3 to help with research on implementing firebase into a SwiftUI application
 
 #Preview("Patient") {
