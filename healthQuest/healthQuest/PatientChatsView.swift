@@ -47,7 +47,7 @@ struct PatientChatsView: View {
                     .padding(.horizontal, 40)
                 } else {
                     List(chatRooms) { room in
-                        NavigationLink(destination: ChatDetailView(chatRoom: room)) {
+                        NavigationLink(destination: ChatDetailView(chatType: room.id, chatRoom: room)) {
                             ChatRoomRow(room: room, isTherapistView: false)
                         }
                         .listRowBackground(Color.clear)
@@ -115,7 +115,7 @@ struct PatientChatsView: View {
                     }
 
                     aiRoom = ChatRoom(
-                        id: "ai_\(patientId)",
+                        id: "ai",
                         clientName: "HealthQuest AI",
                         lastMessage: data["lastMessage"] as? String ?? "",
                         lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
@@ -141,7 +141,7 @@ struct PatientChatsView: View {
                     }
 
                     therapistRoom = ChatRoom(
-                        id: "therapist_\(patientId)",
+                        id: "clients",
                         clientName: "My Therapist",
                         lastMessage: data["lastMessage"] as? String ?? "",
                         lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast

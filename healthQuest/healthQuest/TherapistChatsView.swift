@@ -49,7 +49,7 @@ struct TherapistChatsView: View {
                     .padding(.horizontal, 40)
                 } else {
                     List(chatRooms) { room in
-                        NavigationLink(destination: ChatDetailView(chatRoom: room)) {
+                        NavigationLink(destination: ChatDetailView(chatType: chatType, chatRoom: room)) {
                             ChatRoomRow(room: room, isTherapistView: true)
                         }
                         .listRowBackground(Color.clear)

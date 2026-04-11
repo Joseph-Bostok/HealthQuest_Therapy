@@ -9,12 +9,14 @@ import FirebaseAuth
 import FirebaseFirestore
 
 struct ChatMessage: Identifiable, Codable, Equatable {
-    let id: String
-    let senderId: String
-    let senderName: String
-    let text: String
+    @DocumentID var id: String?
+    let content: String
+    let sender: String
     let timestamp: Date
-    let isFromTherapist: Bool
+    let read: Bool
+    
+    let flagged: Bool?
+    let riskscore: Int?
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         lhs.id == rhs.id
@@ -22,17 +24,16 @@ struct ChatMessage: Identifiable, Codable, Equatable {
 }
 
 struct ChatDetailView: View {
-
+    let chatType: String
     let chatRoom: ChatRoom
     @EnvironmentObject var session: SessionViewModel
-
     @State private var messages: [ChatMessage] = []
     @State private var newMessageText: String = ""
+    
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
 
     private let db = Firestore.firestore()
-
-    private var isTherapist: Bool { session.user?.role == "therapist" }
-    //private var displayName: String { isTherapist ? chatRoom.clientName : "My Therapist" }
 
     var body: some View {
         ZStack {
@@ -58,11 +59,19 @@ struct ChatDetailView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(messages) { msg in
-                                    MessageBubble(
-                                        message: msg,
-                                        isCurrentUser: msg.senderId == session.user?.uid
-                                    )
-                                    .id(msg.id)
+                                    if chatType == "AI" {
+                                        MessageBubble(
+                                            message: msg,
+                                            isCurrentUser: !(msg.sender == "AI")
+                                        )
+                                        .id(msg.id)
+                                    } else {
+                                        MessageBubble(
+                                            message: msg,
+                                            isCurrentUser: msg.sender == session.user?.uid
+                                        )
+                                        .id(msg.id)
+                                    }
                                 }
                             }
                             .padding(.horizontal, 14)
@@ -81,92 +90,267 @@ struct ChatDetailView: View {
                         }
                     }
                 }
-
-                // Message input bar
-                HStack(spacing: 12) {
-                    TextField("Message…", text: $newMessageText, axis: .vertical)
-                        .lineLimit(1...4)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.95))
-                        .clipShape(RoundedRectangle(cornerRadius: 22))
-
-                    Button {
-                        sendMessage()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 34))
-                            .foregroundStyle(
-                                newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if !(session.user?.role == "therapist" && chatType == "ai"){
+                    HStack(spacing: 12) {
+                        TextField("Message…", text: $newMessageText, axis: .vertical)
+                            .lineLimit(1...4)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.white.opacity(0.95))
+                            .clipShape(RoundedRectangle(cornerRadius: 22))
+                        
+                        Button {
+                            sendMessage()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 34))
+                                .foregroundStyle(
+                                    newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                     ? Color.secondary.opacity(0.4)
                                     : Color("AccentColor")
-                            )
-                    }
-                    .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                )
+                        }
+                        .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }.padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color("AppBackground"))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color("AppBackground"))
+                
             }
+        }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
         .navigationTitle(chatRoom.clientName)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             listenToMessages()
-            //if chatRoom.hasMessages { markAsRead() }
         }
     }
 
     private func listenToMessages() {
-        db.collection("chats")
-            .document(chatRoom.id)
-            .collection("messages")
-            .order(by: "timestamp", descending: false)
-            .addSnapshotListener { snapshot, _ in
-                guard let docs = snapshot?.documents else { return }
-                self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+        if chatType == "ai" {
+            if session.user?.role == "patient" {
+                db.collection("ai_chats")
+                    .document(session.user?.uid ?? "")
+                    .collection("messages")
+                    .order(by: "timestamp", descending: false)
+                    .addSnapshotListener { snapshot, _ in
+                        guard let docs = snapshot?.documents else { return }
+                        self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+                    }
+            } else {
+                db.collection("ai_chats")
+                    .document(chatRoom.id)
+                    .collection("messages")
+                    .order(by: "timestamp", descending: false)
+                    .addSnapshotListener { snapshot, _ in
+                        guard let docs = snapshot?.documents else { return }
+                        self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+                    }
             }
-    }
-
-        //private func markAsRead() {
-      //  let field = isTherapist ? "unreadCount" : "patientUnreadCount"
-       // db.collection("chats").document(chatRoom.id).updateData([field: 0])
-   // }
-
-    private func sendMessage() {
-        let trimmed = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let user = session.user else { return }
-
-        let message = ChatMessage(
-            id: UUID().uuidString,
-            senderId: user.uid,
-            senderName: user.firstName,
-            text: trimmed,
-            timestamp: Date(),
-            isFromTherapist: isTherapist
-        )
-
-        do {
-            try db.collection("chats")
+        }
+        if chatType == "providers" {
+            db.collection("provider_chats")
                 .document(chatRoom.id)
                 .collection("messages")
-                .document(message.id)
-                .setData(from: message)
-
-            var updateData: [String: Any] = [
-                "lastMessage": trimmed,
-                "lastMessageAt": Timestamp(date: Date())
-            ]
-            if isTherapist {
-                updateData["patientUnreadCount"] = FieldValue.increment(Int64(1))
-            } else {
-                updateData["unreadCount"] = FieldValue.increment(Int64(1))
-            }
-            db.collection("chats").document(chatRoom.id).updateData(updateData)
-            newMessageText = ""
-        } catch {
-            print("Error sending message: \(error)")
+                .order(by: "timestamp", descending: false)
+                .addSnapshotListener { snapshot, _ in
+                    guard let docs = snapshot?.documents else { return }
+                    self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+                }
         }
+        if chatType == "clients" {
+            if session.user?.role == "patient" {
+                db.collection("therapist_chats")
+                    .document(session.user?.uid ?? "")
+                    .collection("messages")
+                    .order(by: "timestamp", descending: false)
+                    .addSnapshotListener { snapshot, _ in
+                        guard let docs = snapshot?.documents else { return }
+                        self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+                    }
+            } else {
+                db.collection("therapist_chats")
+                    .document(chatRoom.id)
+                    .collection("messages")
+                    .order(by: "timestamp", descending: false)
+                    .addSnapshotListener { snapshot, _ in
+                        guard let docs = snapshot?.documents else { return }
+                        self.messages = docs.compactMap { try? $0.data(as: ChatMessage.self) }
+                    }
+            }
+        }
+
+    }
+
+
+    private func sendMessage() {
+        if session.user?.role == "patient" {
+            sendMessageClient()
+        } else {
+            sendMessageTherapist()
+        }
+    }
+    
+    private func sendMessageClient() {
+        let trimmed = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let db = Firestore.firestore()
+        guard let uid = session.user?.uid else {
+            return
+        }
+        if chatType == "ai" {
+            CHECKFORFLAG()
+            db.collection("ai_chats").document(uid).collection("messages")
+                .document().setData([
+                    "content": newMessageText,
+                    "sender": uid,
+                    "flagged": false,
+                    "riskscore": 0,
+                    "timestamp": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                } else {
+                    SENDAIPROMPT()
+                }
+            }
+            
+            db.collection("ai_chats").document(uid)
+                .updateData([
+                    "lastMessage": newMessageText,
+                    "sender": uid,
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                } else {
+                    newMessageText = ""
+                }
+            }
+        }
+        if chatType == "clients" {
+            db.collection("therapist_chats").document(uid).collection("messages")
+                .document().setData([
+                    "content": newMessageText,
+                    "sender": uid,
+                    "timestamp": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+            }
+            
+            db.collection("therapist_chats").document(uid)
+                .updateData([
+                    "lastMessage": newMessageText,
+                    "sender": uid,
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                } else {
+                    newMessageText = ""
+                }
+            }
+        }
+        
+    }
+    
+    
+    private func sendMessageTherapist() {
+        let trimmed = newMessageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let db = Firestore.firestore()
+        guard let uid = session.user?.uid else {
+            return
+        }
+        if chatType == "providers" {
+            db.collection("provider_chats").document(chatRoom.id).collection("messages")
+                .document().setData([
+                    "content": newMessageText,
+                    "sender": uid,
+                    "timestamp": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+            }
+            db.collection("provider_chats").document(chatRoom.id)
+                .updateData([
+                    "lastMessage": newMessageText,
+                    "sender": uid,
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                } else {
+                    newMessageText = ""
+                }
+            }
+        }
+        if chatType == "clients" {
+            db.collection("therapist_chats").document(chatRoom.id).collection("messages")
+                .document().setData([
+                    "content": newMessageText,
+                    "sender": uid,
+                    "timestamp": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                }
+            }
+            db.collection("therapist_chats").document(chatRoom.id)
+                .updateData([
+                    "lastMessage": newMessageText,
+                    "sender": uid,
+                    "lastMessageAt": Timestamp(),
+                    "read": false
+            ]) { error in
+                if let error = error {
+                    errorMessage = error.localizedDescription
+                    showErrorAlert = true
+                    return
+                } else {
+                    newMessageText = ""
+                }
+            }
+        }
+    }
+    
+    private func CHECKFORFLAG() {
+        //TO DO: check for bad keywords
+    }
+    
+    private func SENDAIPROMPT() {
+        //TO DO: send logic for AI reply
+    }
+    
+    private func MARKASREAD() {
+        //TO DO: mark as read
     }
 }
 
@@ -180,7 +364,7 @@ struct MessageBubble: View {
             if isCurrentUser { Spacer(minLength: 60) }
 
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 3) {
-                Text(message.text)
+                Text(message.content)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(

@@ -182,6 +182,8 @@ struct TherapistProfileView: View {
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
     @State private var goToChats = false
+    
+    @State private var chatRoom = ChatRoom(id: "", clientName: "", lastMessage: "", lastMessageAt: Date())
 
     var body: some View {
         ZStack {
@@ -259,7 +261,8 @@ struct TherapistProfileView: View {
             Text(errorMessage)
         }
         .navigationDestination(isPresented: $goToChats) {
-            TherapistChatsView(chatType: "providers")
+            
+            ChatDetailView(chatType: "providers", chatRoom: chatRoom)
         }
         .navigationTitle("Therapist Profile")
         .navigationBarTitleDisplayMode(.inline)
@@ -275,20 +278,20 @@ struct TherapistProfileView: View {
             .whereField("therapist1", isEqualTo: uid)
             .whereField("therapist2", isEqualTo: therapist.id)
             .getDocuments { snapshot, error in
-                if let _ = snapshot?.documents.first {
-                    //TO DO: go to correct chat
+                if let doc = snapshot?.documents.first {
+                    chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
                     goToChats = true
                 } else {
                     db.collection("provider_chats")
                         .whereField("therapist1", isEqualTo: therapist.id)
                         .whereField("therapist2", isEqualTo: uid)
                         .getDocuments { snapshot, error in
-                            if let _ = snapshot?.documents.first {
-                                //TO DO: go to correct chat
+                            if let doc = snapshot?.documents.first {
+                                chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
                                 goToChats = true
                             } else {
-                                db.collection("provider_chats").document()
-                                    .setData([
+                                let docRef = db.collection("provider_chats").document()
+                                docRef.setData([
                                         "therapist1": session.user?.uid ?? "",
                                         "therapist1name": name,
                                         "therapist2": therapist.id,
@@ -300,7 +303,7 @@ struct TherapistProfileView: View {
                                         showErrorAlert = true
                                         return
                                     } else {
-                                        //TO DO: go to correct chat
+                                        chatRoom = ChatRoom(id: docRef.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
                                         goToChats = true
                                     }
                                 }
@@ -499,10 +502,11 @@ struct EnterReferralView: View {
                 
                 messagesRef.document().setData([
                     "content": welcomeMessage,
-                    "sender": "therapist",
+                    "sender": therapistId,
                     "therapistID": therapistId,
-                    "clientName": fullName,
-                    "timestamp": Timestamp()
+                    //"clientName": fullName,
+                    "timestamp": Timestamp(),
+                    "read": false
                 ]) { error in
                     if let error = error {
                         errorMessage = error.localizedDescription
@@ -513,10 +517,11 @@ struct EnterReferralView: View {
                 
                 chatRef.setData([
                     "lastMessage": welcomeMessage,
-                    "sender": "therapist",
+                    "sender": therapistId,
                     "therapistID": therapistId,
                     "clientName": fullName,
-                    "lastMessageAt": Timestamp()
+                    "lastMessageAt": Timestamp(),
+                    "read": false
                 ]) { error in
                     if let error = error {
                         errorMessage = error.localizedDescription
