@@ -5,13 +5,9 @@ import FirebaseFirestore
 struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
-    @State private var navigateToHome = false
-    @State private var firstName = ""
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
-    @State private var showSuccessAlert = false
-    @State private var successMessage = ""
 
     @State private var emailError: String = ""
     @State private var passwordError: String = ""
@@ -71,17 +67,26 @@ struct LoginView: View {
                             }
                         }
 
+                        // FIX: isLoading state now disables button and shows spinner
                         Button {
                             if validate() { logIn() }
                         } label: {
-                            Text("Log In")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color("AccentColor"))
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            Group {
+                                if isLoading {
+                                    ProgressView()
+                                        .tint(.white)
+                                } else {
+                                    Text("Log In")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color("AccentColor"))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
+                        .disabled(isLoading)
 
                         NavigationLink {
                             UserRoleView()
@@ -96,6 +101,7 @@ struct LoginView: View {
                                         .stroke(Color("AccentColor"), lineWidth: 1.5)
                                 )
                         }
+                        .disabled(isLoading)
                     }
                     .alert("Error", isPresented: $showErrorAlert) {
                         Button("OK", role: .cancel) { }
@@ -110,7 +116,7 @@ struct LoginView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-    } //view end
+    } // view end
 
     @ViewBuilder
     private func validatedField(
@@ -175,8 +181,13 @@ struct LoginView: View {
             emailError = ""
         }
 
-        if password.trimmingCharacters(in: .whitespaces).isEmpty {
+        // FIX: Added minimum 6-character password check to match Firebase's requirement
+        let trimmedPassword = password.trimmingCharacters(in: .whitespaces)
+        if trimmedPassword.isEmpty {
             passwordError = "Password is required."
+            valid = false
+        } else if trimmedPassword.count < 6 {
+            passwordError = "Password must be at least 6 characters."
             valid = false
         } else {
             passwordError = ""
@@ -189,12 +200,20 @@ struct LoginView: View {
         let trimmedEmail = email.trimmingCharacters(in: .whitespaces)
         let trimmedPassword = password.trimmingCharacters(in: .whitespaces)
 
+        // FIX: isLoading gates the button during the async Firebase call
+        isLoading = true
+
         Auth.auth().signIn(withEmail: trimmedEmail, password: trimmedPassword) { result, error in
+            isLoading = false
+
             if let error = error {
                 errorMessage = error.localizedDescription
                 showErrorAlert = true
                 return
             }
+            // Navigation is handled automatically by SessionViewModel's
+            // authStateDidChangeListener, which RootView observes.
+            // No manual navigation needed here.
         }
     }
 
