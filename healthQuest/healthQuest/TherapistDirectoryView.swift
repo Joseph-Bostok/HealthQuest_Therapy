@@ -183,7 +183,7 @@ struct TherapistProfileView: View {
     @State private var showErrorAlert = false
     @State private var goToChats = false
     
-    @State private var chatRoom = ChatRoom(id: "", clientName: "", lastMessage: "", lastMessageAt: Date())
+    @State private var chatRoom = ChatRoom(id: "", clientName: "", lastMessage: "", lastMessageAt: Date(), read: false, sender: "")
 
     var body: some View {
         ZStack {
@@ -279,7 +279,8 @@ struct TherapistProfileView: View {
             .whereField("therapist2", isEqualTo: therapist.id)
             .getDocuments { snapshot, error in
                 if let doc = snapshot?.documents.first {
-                    chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
+                    let data = doc.data()
+                    chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: data["sender"] as? String ?? "")
                     goToChats = true
                 } else {
                     db.collection("provider_chats")
@@ -287,7 +288,8 @@ struct TherapistProfileView: View {
                         .whereField("therapist2", isEqualTo: uid)
                         .getDocuments { snapshot, error in
                             if let doc = snapshot?.documents.first {
-                                chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
+                                let data = doc.data()
+                                chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender:  data["sender"] as? String ?? "")
                                 goToChats = true
                             } else {
                                 let docRef = db.collection("provider_chats").document()
@@ -303,7 +305,7 @@ struct TherapistProfileView: View {
                                         showErrorAlert = true
                                         return
                                     } else {
-                                        chatRoom = ChatRoom(id: docRef.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date())
+                                        chatRoom = ChatRoom(id: docRef.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: uid)
                                         goToChats = true
                                     }
                                 }

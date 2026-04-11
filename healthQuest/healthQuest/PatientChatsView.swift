@@ -18,6 +18,8 @@ struct ChatRoom: Identifiable, Equatable {
     let clientName: String
     let lastMessage: String
     let lastMessageAt: Date
+    let read: Bool
+    let sender: String
 }
 
 struct PatientChatsView: View {
@@ -48,7 +50,7 @@ struct PatientChatsView: View {
                 } else {
                     List(chatRooms) { room in
                         NavigationLink(destination: ChatDetailView(chatType: room.id, chatRoom: room)) {
-                            ChatRoomRow(room: room, isTherapistView: false)
+                            ChatRoomRow(room: room, isTherapistAIView: false)
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -58,7 +60,7 @@ struct PatientChatsView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Clients")
+            .navigationTitle("Chats")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -118,7 +120,9 @@ struct PatientChatsView: View {
                         id: "ai",
                         clientName: "HealthQuest AI",
                         lastMessage: data["lastMessage"] as? String ?? "",
-                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                        read: data["read"] as? Bool ?? false,
+                        sender: data["sender"] as? String ?? ""
                     )
 
                     updateRooms()
@@ -144,7 +148,9 @@ struct PatientChatsView: View {
                         id: "clients",
                         clientName: "My Therapist",
                         lastMessage: data["lastMessage"] as? String ?? "",
-                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                        read: data["read"] as? Bool ?? false,
+                        sender: data["sender"] as? String ?? ""
                     )
 
                     updateRooms()
@@ -156,7 +162,8 @@ struct PatientChatsView: View {
 
 struct ChatRoomRow: View {
     let room: ChatRoom
-    let isTherapistView: Bool
+    let isTherapistAIView: Bool
+    @EnvironmentObject var session: SessionViewModel
     
     var body: some View {
         HStack(spacing: 16) {
@@ -173,10 +180,21 @@ struct ChatRoomRow: View {
                 HStack {
                     Text(room.clientName)
                         .font(.headline)
+                        .fontWeight(
+                            (!room.read && room.sender != session.user?.uid && !isTherapistAIView)
+                            ? .bold
+                            : .regular
+                        )
                     Spacer()
                     Text(timeAgoString(from: room.lastMessageAt))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    
+                    if !room.read && room.sender != session.user?.uid && !isTherapistAIView{
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 8, height: 8)
+                        }
                 }
 
                 Text(room.lastMessage)

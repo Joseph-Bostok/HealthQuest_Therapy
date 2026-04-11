@@ -415,6 +415,9 @@ struct JournalEntryView: View {
     
     
     private func submitEntry() {
+        // TO DO JOEY: check entry for bad key words and flag it if its bad
+        // variable to check is: dailyThoughts
+        
         isSubmitting = true
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: entryDate)

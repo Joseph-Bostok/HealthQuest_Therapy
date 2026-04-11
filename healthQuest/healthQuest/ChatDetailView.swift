@@ -59,7 +59,7 @@ struct ChatDetailView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(messages) { msg in
-                                    if chatType == "AI" {
+                                    if chatType == "ai" {
                                         MessageBubble(
                                             message: msg,
                                             isCurrentUser: !(msg.sender == "AI")
@@ -126,6 +126,7 @@ struct ChatDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             listenToMessages()
+            MARKASREAD()
         }
     }
 
@@ -201,11 +202,13 @@ struct ChatDetailView: View {
         guard let uid = session.user?.uid else {
             return
         }
+        let text = newMessageText
         if chatType == "ai" {
             CHECKFORFLAG()
+            newMessageText = ""
             db.collection("ai_chats").document(uid).collection("messages")
                 .document().setData([
-                    "content": newMessageText,
+                    "content": text,
                     "sender": uid,
                     "flagged": false,
                     "riskscore": 0,
@@ -223,7 +226,7 @@ struct ChatDetailView: View {
             
             db.collection("ai_chats").document(uid)
                 .updateData([
-                    "lastMessage": newMessageText,
+                    "lastMessage": text,
                     "sender": uid,
                     "lastMessageAt": Timestamp(),
                     "read": false
@@ -233,14 +236,15 @@ struct ChatDetailView: View {
                     showErrorAlert = true
                     return
                 } else {
-                    newMessageText = ""
+                    
                 }
             }
         }
         if chatType == "clients" {
+            newMessageText = ""
             db.collection("therapist_chats").document(uid).collection("messages")
                 .document().setData([
-                    "content": newMessageText,
+                    "content": text,
                     "sender": uid,
                     "timestamp": Timestamp(),
                     "read": false
@@ -254,7 +258,7 @@ struct ChatDetailView: View {
             
             db.collection("therapist_chats").document(uid)
                 .updateData([
-                    "lastMessage": newMessageText,
+                    "lastMessage": text,
                     "sender": uid,
                     "lastMessageAt": Timestamp(),
                     "read": false
@@ -264,7 +268,7 @@ struct ChatDetailView: View {
                     showErrorAlert = true
                     return
                 } else {
-                    newMessageText = ""
+
                 }
             }
         }
@@ -279,10 +283,14 @@ struct ChatDetailView: View {
         guard let uid = session.user?.uid else {
             return
         }
+        let text = newMessageText
+        
+        
         if chatType == "providers" {
+            newMessageText = ""
             db.collection("provider_chats").document(chatRoom.id).collection("messages")
                 .document().setData([
-                    "content": newMessageText,
+                    "content": text,
                     "sender": uid,
                     "timestamp": Timestamp(),
                     "read": false
@@ -295,7 +303,7 @@ struct ChatDetailView: View {
             }
             db.collection("provider_chats").document(chatRoom.id)
                 .updateData([
-                    "lastMessage": newMessageText,
+                    "lastMessage": text,
                     "sender": uid,
                     "lastMessageAt": Timestamp(),
                     "read": false
@@ -305,14 +313,15 @@ struct ChatDetailView: View {
                     showErrorAlert = true
                     return
                 } else {
-                    newMessageText = ""
+                    
                 }
             }
         }
         if chatType == "clients" {
+            newMessageText = ""
             db.collection("therapist_chats").document(chatRoom.id).collection("messages")
                 .document().setData([
-                    "content": newMessageText,
+                    "content": text,
                     "sender": uid,
                     "timestamp": Timestamp(),
                     "read": false
@@ -325,7 +334,7 @@ struct ChatDetailView: View {
             }
             db.collection("therapist_chats").document(chatRoom.id)
                 .updateData([
-                    "lastMessage": newMessageText,
+                    "lastMessage": text,
                     "sender": uid,
                     "lastMessageAt": Timestamp(),
                     "read": false
@@ -335,22 +344,95 @@ struct ChatDetailView: View {
                     showErrorAlert = true
                     return
                 } else {
-                    newMessageText = ""
+                    
                 }
             }
         }
     }
     
     private func CHECKFORFLAG() {
-        //TO DO: check for bad keywords
+        //TO DO JOEY: check for bad keywords
+        
+        // create an array of keywords that should be flagged
+        // search the newMessageText
+        // set the flag in the message and also in the flags collection
+        //adjust UI accordingly
     }
     
     private func SENDAIPROMPT() {
-        //TO DO: send logic for AI reply
+        //TO DO JOEY: send logic for AI reply
+        
+        //check the users input (newMessageText) for any key words present in
+        //the callAndResponse firebase collection, then create a new message from the AI and send
+        //to user, going to default response if no keyword is found
     }
     
     private func MARKASREAD() {
-        //TO DO: mark as read
+        let db = Firestore.firestore()
+        
+        let uid = session.user?.uid ?? ""
+        if !chatRoom.read && !(chatRoom.sender == uid) {
+            if session.user?.role == "patient" {
+                if chatType == "ai" {
+                    db.collection("ai_chats").document(uid)
+                        .updateData([
+                            "read": true
+                    ]) { error in
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                            return
+                        } else {
+                            newMessageText = ""
+                        }
+                    }
+                }
+                if chatType == "clients" {
+                    db.collection("therapist_chats").document(uid)
+                        .updateData([
+                            "read": true
+                    ]) { error in
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                            return
+                        } else {
+                            newMessageText = ""
+                        }
+                    }
+                }
+            } else {
+                if chatType == "clients" {
+                    db.collection("therapist_chats").document(chatRoom.id)
+                        .updateData([
+                            "read": true
+                    ]) { error in
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                            return
+                        } else {
+                            newMessageText = ""
+                        }
+                    }
+                }
+                if chatType == "providers" {
+                    db.collection("provider_chats").document(chatRoom.id)
+                        .updateData([
+                            "read": true
+                    ]) { error in
+                        if let error = error {
+                            errorMessage = error.localizedDescription
+                            showErrorAlert = true
+                            return
+                        } else {
+                            newMessageText = ""
+                        }
+                    }
+                }
+            }
+        }
+        
     }
 }
 

@@ -26,6 +26,7 @@ struct TherapistChatsView: View {
     @State private var providerListener2: ListenerRegistration?
 
     private let db = Firestore.firestore()
+   
 
     var body: some View {
         NavigationStack {
@@ -50,7 +51,7 @@ struct TherapistChatsView: View {
                 } else {
                     List(chatRooms) { room in
                         NavigationLink(destination: ChatDetailView(chatType: chatType, chatRoom: room)) {
-                            ChatRoomRow(room: room, isTherapistView: true)
+                            ChatRoomRow(room: room, isTherapistAIView: (chatType == "ai"))
                         }
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
@@ -60,7 +61,7 @@ struct TherapistChatsView: View {
                     .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle("Clients")
+            .navigationTitle("Chats")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -134,10 +135,11 @@ struct TherapistChatsView: View {
 
                         return ChatRoom(
                             id: doc.documentID,
-                            //To Do: fix this to display the client name
                             clientName: data["clientName"] as? String ?? "",
                             lastMessage: data["lastMessage"] as? String ?? "",
-                            lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                            lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                            read: data["read"] as? Bool ?? false,
+                            sender: data["sender"] as? String ?? ""
                         )
                     }
 
@@ -195,7 +197,9 @@ struct TherapistChatsView: View {
                         id: doc.documentID,
                         clientName: data["therapist2name"] as? String ?? "Unknown Provider",
                         lastMessage: data["lastMessage"] as? String ?? "",
-                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                        read: data["read"] as? Bool ?? false,
+                        sender: data["sender"] as? String ?? ""
                     )
                 }
 
@@ -226,7 +230,9 @@ struct TherapistChatsView: View {
                         id: doc.documentID,
                         clientName: data["therapist1name"] as? String ?? "Unknown Provider",
                         lastMessage: data["lastMessage"] as? String ?? "",
-                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                        lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                        read: data["read"] as? Bool ?? false,
+                        sender: data["sender"] as? String ?? ""
                     )
                 }
 
@@ -284,12 +290,6 @@ struct TherapistChatsView: View {
     }
     
     func loadAIChats(patientIds: [String]) {
-        guard let therapistId = session.user?.uid else {
-            errorMessage = "therapist ID mismatch"
-            showErrorAlert = true
-            isLoading = false
-            return
-        }
             
         guard session.user?.role == "therapist" else {
             errorMessage = "therapist role mismatch"
@@ -325,7 +325,9 @@ struct TherapistChatsView: View {
                             id: snapshot.documentID,
                             clientName: data["clientName"] as? String ?? "Unknown Client",
                             lastMessage: data["lastMessage"] as? String ?? "",
-                            lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                            lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
+                            read: data["read"] as? Bool ?? false,
+                            sender: data["sender"] as? String ?? ""
                         )
 
                         loadedRooms.append(room)

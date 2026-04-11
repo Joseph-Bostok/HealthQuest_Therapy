@@ -121,6 +121,7 @@ struct HomePageView: View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
                 statCard(icon: "person.2.fill",iconColor: Color("AccentColor"),value: "\(summary2.clients)", label: "Clients")
+                //TO DO JOEY: fix this so it displays accurate number of flags per user
                 statCard(icon: "message.fill",iconColor: .red, value: "--", label: "Flags")
                 statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.avgRating)", label: "Rating")
             }
@@ -229,6 +230,7 @@ struct HomePageView: View {
     }
     
     private func loadTherapistStats() {
+        //TO DO JOEY: load the flag value in this function
         guard let uid = session.user?.uid else { return }
         db.collection("therapists")
             .document(uid)
