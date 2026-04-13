@@ -23,6 +23,7 @@ struct TherapistSummary {
     var unread: Int = 0
     var reviews: Int = 0
     var avgRating: Double = 0.0
+    var flags: int = 0 // new flag added (joey)
 }
 
 
@@ -121,9 +122,10 @@ struct HomePageView: View {
         VStack(spacing: 20) {
             HStack(spacing: 14) {
                 statCard(icon: "person.2.fill",iconColor: Color("AccentColor"),value: "\(summary2.clients)", label: "Clients")
-                //TO DO JOEY: fix this so it displays accurate number of flags per user
-                statCard(icon: "message.fill",iconColor: .red, value: "--", label: "Flags")
-                statCard(icon: "checkmark.seal.fill", iconColor: .green,value: "\(summary2.avgRating)", label: "Rating")
+                //TO DO JOEY: fix this so it displays accurate number of flags per user 
+                //ADDED (JOEY): has live flag count, swapped icon to flag.fill
+                statCard(icon: "flag.fill",     iconColor: .red,                 value: "\(summary2.flags)",   label: "Flags")
+                statCard(icon: "checkmark.seal.fill", iconColor: .green,         value: "\(summary2.avgRating)", label: "Rating")
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -230,19 +232,40 @@ struct HomePageView: View {
     }
     
     private func loadTherapistStats() {
-        //TO DO JOEY: load the flag value in this function
+        //TO DO JOEY: load the flag value in this function (done!
+        //ADDED (Joey): after fetching the patients array, we fan out one query pet patient to count
+        //journal entries where flagged == true using dispatch to sync
         guard let uid = session.user?.uid else { return }
         db.collection("therapists")
             .document(uid)
             .getDocument { snapshot, error in
-                    if let data = snapshot?.data(),
-                       let array = data["patients"] as? [String] {
-                        let count = array.count
-                        summary2.clients = count
-                        
-                    }
+                guard let data = snapshot?.data(),
+                      let patients = data["patients"] as? [String] else { return }
+
+                summary2.clients = patients.count
+
+                // ADDED (Joey): fan-out flag counting across all patients
+                var totalFlags = 0
+                let group = DispatchGroup()
+
+                for patientId in patients {
+                    group.enter()
+                    db.collection("journals").document(patientId)
+                        .collection("journalEntries")
+                        .whereField("flagged", isEqualTo: true)
+                        .getDocuments { snap, _ in
+                            if let docs = snap?.documents {
+                                totalFlags += docs.count
+                            }
+                            group.leave()
+                        }
                 }
-        
+                //ADDED (Joey): update UI on main thread 
+                group.notify(queue: .main) {
+                    summary2.flags = totalFlags
+                }
+            }
+        //load ratings (not changed)
         db.collection("reviews")
             .document(uid).collection("userReviews")
             .addSnapshotListener { snapshot, error in
