@@ -428,7 +428,22 @@ struct JournalEntryView: View {
             showErrorAlert = true
             return
         }
+
+        //ADDED (JOEY): check dailythoughts for conerning keywords and set flags status
+        //uses a lowercase copy so matching is case-insensitive
+        //add or remove keywords as needed
+        let flagKeywords: [String] = [
+        "suicide", "suicidal", "kill myself", "end my life", "end it all",
+        "self-harm", "self harm", "cutting myself", "hurt myself",
+        "don't want to live", "no reason to live", "better off dead",
+        "want to die", "wanna die", "hopeless", "give up on life",
+        "overdose", "no way out"
+    ]
+
+    let lowered = dailyThoughts.lowercased()
+    let isFlagged = flagKeywords.contains { lowered.contains($0) }
         
+        //Dashboard can query for flagged entries
         let entryData: [String: Any] = [
             "date":            entryDate,
             "createdAt":       Timestamp(),
@@ -437,7 +452,9 @@ struct JournalEntryView: View {
             "waterGlasses":    Int(waterGlasses),
             "sleepHours":      sleepHours,
             "exerciseMinutes": Int(exerciseMinutes),
-            "mealsEaten":      mealsEaten
+            "mealsEaten":      mealsEaten,
+            "flagged" :        isFlagged  //ADDED (JOEY)
+            
         ]
         
         let db = Firestore.firestore()
