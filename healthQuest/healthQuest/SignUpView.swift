@@ -195,7 +195,7 @@ struct SignUpView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding(12)
-                    .background(fieldBg)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
@@ -207,7 +207,7 @@ struct SignUpView: View {
                     .textInputAutocapitalization(capitalization)
                     .autocorrectionDisabled()
                     .padding(12)
-                    .background(fieldBg)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)

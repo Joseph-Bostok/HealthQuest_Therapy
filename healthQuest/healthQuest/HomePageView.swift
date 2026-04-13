@@ -23,7 +23,7 @@ struct TherapistSummary {
     var unread: Int = 0
     var reviews: Int = 0
     var avgRating: Double = 0.0
-    var flags: int = 0 // new flag added (joey)
+    var flags: Int = 0 // new flag added (joey)
 }
 
 

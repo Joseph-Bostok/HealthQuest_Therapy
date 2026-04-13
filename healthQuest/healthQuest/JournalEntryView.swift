@@ -115,45 +115,43 @@ struct JournalEntryView: View {
     }
     
     
-    private var dateSelectorRow: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                    showDatePicker.toggle()
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundStyle(Color("AccentColor"))
-                    Text(entryDate.formatted(date: .long, time: .omitted))
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: showDatePicker ? "chevron.up" : "chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(14)
-                .background(Color.white.opacity(0.95))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
+   private var dateSelectorRow: some View {
+       VStack(alignment: .leading, spacing: 0) {
+           Button {
+               
+           } label: {
+               HStack {
+                   Image(systemName: "calendar")
+                       .foregroundStyle(Color("AccentColor"))
+                   Text(entryDate.formatted(date: .long, time: .omitted))
+                       .fontWeight(.medium)
+                       .foregroundStyle(.primary)
+                   Spacer()
+                   
+               }
+               .padding(14)
+               .background(Color.white.opacity(0.95))
+               .clipShape(RoundedRectangle(cornerRadius: 14))
+           }
+       }
             
-            if showDatePicker {
-                DatePicker(
-                    "Entry Date",
-                    selection: $entryDate,
-                    in: ...Date(),
-                    displayedComponents: .date
-                )
-                .datePickerStyle(.graphical)
-                .tint(Color("AccentColor"))
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
-                .background(Color.white.opacity(0.95))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
+           // if showDatePicker {
+           //     DatePicker(
+          //          "Entry Date",
+           //         selection: $entryDate,
+           //         in: ...Date(),
+          //          displayedComponents: .date
+          //      )
+          //      .datePickerStyle(.graphical)
+         //       .tint(Color("AccentColor"))
+         //       .padding(.horizontal, 8)
+         //       .padding(.bottom, 8)
+         //       .background(Color.white.opacity(0.95))
+         //       .clipShape(RoundedRectangle(cornerRadius: 14))
+         //       .transition(.opacity.combined(with: .move(edge: .top)))
+         //   }
+      //  }
+    
     }
     
     
@@ -413,10 +411,11 @@ struct JournalEntryView: View {
         }
     }
     
-    
     private func submitEntry() {
         // TO DO JOEY: check entry for bad key words and flag it if its bad
         // variable to check is: dailyThoughts
+        
+        
         
         isSubmitting = true
         let calendar = Calendar.current

@@ -15,7 +15,6 @@ struct TherapistClient: Identifiable, Hashable {
     let lastName: String
     let email: String
     let bio: String
-
     var fullName: String {
         "\(firstName) \(lastName)"
     }
@@ -126,7 +125,7 @@ struct JournalReviewView: View {
                     .overlay(
                         Text(client.firstName.prefix(1).uppercased())
                             .font(.title3.bold())
-                            .foregroundStyle(Color.red)
+                            .foregroundStyle(Color.gray)
                         
                     )
                 

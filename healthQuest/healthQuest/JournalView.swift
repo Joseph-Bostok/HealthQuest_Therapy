@@ -23,6 +23,7 @@ struct JournalEntrySummary: Identifiable, Hashable {
     let exerciseMinutes: Int
     let mealsEaten: Int
     let comments: String
+    let flagged: Bool
 }
 
 
@@ -214,7 +215,8 @@ struct JournalView: View {
                         sleepHours: data["sleepHours"] as? Double ?? 0,
                         exerciseMinutes: data["exerciseMinutes"] as? Int ?? 0,
                         mealsEaten: data["mealsEaten"] as? Int ?? 0,
-                        comments: data["comments"] as? String ?? ""
+                        comments: data["comments"] as? String ?? "",
+                        flagged: data["flagged"] as? Bool ?? false
                     )
                 }
             }
@@ -243,16 +245,20 @@ struct JournalView: View {
 struct JournalEntryRow: View {
     let entry: JournalEntrySummary
     
+    private var rowColor: Color {
+            entry.flagged ? .red : Color("AccentColor")
+        }
         
     var body: some View {
         HStack(spacing: 14) {
             VStack(spacing: 2) {
                 Text(entry.date.formatted(.dateTime.month(.abbreviated)))
                     .font(.caption2.bold())
-                    .foregroundStyle(Color("AccentColor"))
+                    .foregroundStyle(rowColor)
                 Text(entry.date.formatted(.dateTime.day()))
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
+                    .foregroundStyle(rowColor)
             }
             .frame(width: 42)
 
@@ -262,6 +268,7 @@ struct JournalEntryRow: View {
                 HStack {
                     Text(entry.date.formatted(.dateTime.weekday(.wide)))
                         .font(.subheadline.bold())
+                        .foregroundStyle(rowColor)
                     Spacer()
                     Text(entry.moodEmoji)
                         .font(.title3)
@@ -270,7 +277,7 @@ struct JournalEntryRow: View {
                     Text(entry.dailyThoughts)
                         .lineLimit(2)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(entry.flagged ? .red : .secondary)
                 }
             }
         }
