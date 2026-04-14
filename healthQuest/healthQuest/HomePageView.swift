@@ -134,7 +134,7 @@ struct HomePageView: View {
                     .foregroundStyle(Color("AccentColor"))
 
                 HStack(spacing: 12) {
-                    NavigationLink(destination: TherapistChatOptionsView()) {
+                    NavigationLink(destination: TherapistChatsView(chatType: "clients")) {
                         quickActionCard(icon: "bubble.left.and.bubble.right.fill", title: "Client Chats", subtitle: "View conversations", color: Color("AccentColor"))
                     }
                     NavigationLink(destination: GenerateReferralCode()) {

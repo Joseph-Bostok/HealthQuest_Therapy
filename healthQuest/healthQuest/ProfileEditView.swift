@@ -338,53 +338,96 @@ struct ProfileEditView: View {
             showErrorAlert = true
             return
         }
-
+        
         guard let role = session.user?.role else {
             errorMessage = "Unable to determine user role."
             showErrorAlert = true
             return
         }
         
-     
+        
         
         let currentAuthEmail = Auth.auth().currentUser?.email ?? ""
+        let collectionName = (role == "therapist") ? "therapists" : "patients"
+        isSaving = true
         
         if currentAuthEmail != email {
             Auth.auth().currentUser?.updateEmail(to: email) { error in
-                 if let error = error {
+                if let error = error {
+                    // if error in code here make sure not to update email address
                     errorMessage = error.localizedDescription
                     showErrorAlert = true
-                    return
+                    let db = Firestore.firestore()
+                    db.collection(collectionName)
+                        .document(uid)
+                        .updateData([
+                            "firstName": firstName,
+                            "lastName": lastName,
+                            "phone": phone,
+                            "bio": bio
+                        ]) { error in
+                            isSaving = false
+                            
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                withAnimation { saveSuccess = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                    withAnimation { saveSuccess = false }
+                                }
+                            }
+                        }
+                } else {
+                    let db = Firestore.firestore()
+                    db.collection(collectionName)
+                        .document(uid)
+                        .updateData([
+                            "firstName": firstName,
+                            "lastName": lastName,
+                            "email": email,
+                            "phone": phone,
+                            "bio": bio
+                        ]) { error in
+                            isSaving = false
+                            
+                            if let error = error {
+                                errorMessage = error.localizedDescription
+                                showErrorAlert = true
+                            } else {
+                                withAnimation { saveSuccess = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                    withAnimation { saveSuccess = false }
+                                }
+                            }
+                        }
                 }
             }
-        }
-
-        let collectionName = (role == "therapist") ? "therapists" : "patients"
-
-        isSaving = true
-
-        let db = Firestore.firestore()
-        db.collection(collectionName)
-            .document(uid)
-            .updateData([
-                "firstName": firstName,
-                "lastName": lastName,
-                "email": email,
-                "phone": phone,
-                "bio": bio
-            ]) { error in
-                isSaving = false
-
-                if let error = error {
-                    errorMessage = error.localizedDescription
-                    showErrorAlert = true
-                } else {
-                    withAnimation { saveSuccess = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                        withAnimation { saveSuccess = false }
+        } else {
+            let db = Firestore.firestore()
+            db.collection(collectionName)
+                .document(uid)
+                .updateData([
+                    "firstName": firstName,
+                    "lastName": lastName,
+                    "email": email,
+                    "phone": phone,
+                    "bio": bio
+                ]) { error in
+                    isSaving = false
+                    
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                    } else {
+                        withAnimation { saveSuccess = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                            withAnimation { saveSuccess = false }
+                        }
                     }
                 }
-            }
+        }
+    
     }
     
     
