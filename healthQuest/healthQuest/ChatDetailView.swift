@@ -97,50 +97,54 @@ struct ChatDetailView: View {
                     }
                     .id(chatRoom.id)
                 }
-                if !(session.user?.role == "therapist" && chatType == "ai"){
-                    HStack(spacing: 12) {
-                        TextField("Message…", text: $newMessageText, axis: .vertical)
-                            .lineLimit(1...4)
-                            .padding(.horizontal, 14)
+                if !(session.user?.role == "therapist" && chatType == "ai") {
+                    if !chatRoom.flagged {
+                        HStack(spacing: 12) {
+                            TextField("Message…", text: $newMessageText, axis: .vertical)
+                                .lineLimit(1...4)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.white.opacity(0.95))
+                                .clipShape(RoundedRectangle(cornerRadius: 22))
+                            
+                            Button {
+                                sendMessage()
+                            } label: {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 34))
+                                    .foregroundStyle(
+                                        newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                        ? Color.secondary.opacity(0.4)
+                                        : Color("AccentColor")
+                                    )
+                            }
+                            .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }.padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.95))
-                            .clipShape(RoundedRectangle(cornerRadius: 22))
-                        
-                        Button {
-                            sendMessage()
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 34))
-                                .foregroundStyle(
-                                    newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                    ? Color.secondary.opacity(0.4)
-                                    : Color("AccentColor")
-                                )
-                        }
-                        .disabled(newMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }.padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(Color("AppBackground"))
+                            .background(Color("AppBackground"))
+                    } 
                 } else {
-                    if chatRoom.flagged {
-                        Button {
-                            removeFlag()
-                        } label: {
-                            Label("Remove Flag", systemImage: "flag.slash")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .foregroundStyle(Color.red)
-                                .background(Color.red.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.red.opacity(0.3), lineWidth: 1)
-                                )
+                        if chatRoom.flagged {
+                            if session.user?.role == "therapist" {
+                            Button {
+                                removeFlag()
+                            } label: {
+                                Label("Remove Flag", systemImage: "flag.slash")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .foregroundStyle(Color.red)
+                                    .background(Color.red.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                    )
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 10)
-                    }
                 }
                 
             }
@@ -547,7 +551,7 @@ private func CHECKFORFLAG(_ text: String, completion: @escaping (Bool, String, S
     
     private func SENDFLAGGEDAIPROMPT() {
         guard let uid = session.user?.uid else { return }
-        let flaggedResponse = "This chat has been flagged for possible harmful phrasing. Your therapist will contact you shortly."
+        let flaggedResponse = "This chat has been flagged for possible harmful phrasing. Your therapist will contact you shortly. Chat is temporarily disabled."
         // ADDED (Joey): save the preloaded response as a new AI message
         let aiMessageData: [String: Any] = [
             "content":   flaggedResponse,
