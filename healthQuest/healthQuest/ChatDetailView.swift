@@ -37,7 +37,8 @@ struct ChatDetailView: View {
 
     var body: some View {
         ZStack {
-            Color("AppBackground").ignoresSafeArea()
+            (chatRoom.flagged ? Color.red.opacity(0.08) : Color("AppBackground"))
+                .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 if messages.isEmpty {
@@ -64,31 +65,36 @@ struct ChatDetailView: View {
                                             message: msg,
                                             isCurrentUser: !(msg.sender == "AI")
                                         )
-                                        .id(msg.id)
                                     } else {
                                         MessageBubble(
                                             message: msg,
                                             isCurrentUser: msg.sender == session.user?.uid
                                         )
-                                        .id(msg.id)
                                     }
                                 }
+
+                                Color.clear
+                                    .frame(height: 1)
+                                    .id("BOTTOM")
                             }
                             .padding(.horizontal, 14)
                             .padding(.top, 12)
                             .padding(.bottom, 8)
                         }
-                        .onChange(of: messages) { _, _ in
-                            if let last = messages.last {
-                                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        .onAppear {
+                            DispatchQueue.main.async {
+                                proxy.scrollTo("BOTTOM", anchor: .bottom)
                             }
                         }
-                        .onAppear {
-                            if let last = messages.last {
-                                proxy.scrollTo(last.id, anchor: .bottom)
+                        .onChange(of: messages.count) { _ in
+                            DispatchQueue.main.async {
+                                withAnimation {
+                                    proxy.scrollTo("BOTTOM", anchor: .bottom)
+                                }
                             }
                         }
                     }
+                    .id(chatRoom.id)
                 }
                 if !(session.user?.role == "therapist" && chatType == "ai"){
                     HStack(spacing: 12) {
@@ -237,16 +243,23 @@ struct ChatDetailView: View {
                 return
             } else {
                 // CHANGED (Joey): pass the preloaded response directly
-                SENDAIPROMPT(responseText: matchedResponse)
+                if !isFlagged {
+                    SENDAIPROMPT(responseText: matchedResponse)
+                } else {
+                    SENDFLAGGEDAIPROMPT()
+                    
+                }
+                
             }
         }
 
         db.collection("ai_chats").document(uid)
-            .updateData([
+            .setData([
                 "lastMessage":   text,
                 "sender":        uid,
                 "lastMessageAt": Timestamp(),
-                "read":          false
+                "read":          false,
+                "flagged":   isFlagged
         ]) { error in
             if let error = error {
                 errorMessage = error.localizedDescription
@@ -482,7 +495,44 @@ private func CHECKFORFLAG(_ text: String, completion: @escaping (Bool, String, S
             "lastMessage":   responseText,
             "sender":        "AI",
             "lastMessageAt": Timestamp(),
-            "read":          false
+            "read":          false,
+            "flagged": false
+            ])
+    }
+    
+    private func SENDFLAGGEDAIPROMPT() {
+        guard let uid = session.user?.uid else { return }
+        let flaggedResponse = "This chat has been flagged for possible harmful phrasing. Your therapist will contact you shortly."
+        // ADDED (Joey): save the preloaded response as a new AI message
+        let aiMessageData: [String: Any] = [
+            "content":   flaggedResponse,
+            "sender":    "AI",
+            "flagged":   false,
+            "riskscore": 0,
+            "timestamp": Timestamp(),
+            "read":      false
+        ]
+
+    db.collection("ai_chats")
+        .document(uid)
+        .collection("messages")
+        .addDocument(data: aiMessageData) { error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                }
+            }
+
+    // ADDED (Joey): update chat room metadata so the chat list
+    // shows the AI's reply as the most recent message
+    db.collection("ai_chats")
+        .document(uid)
+        .updateData([
+            "lastMessage":   flaggedResponse,
+            "sender":        "AI",
+            "lastMessageAt": Timestamp(),
+            "read":          false,
+            "flagged": true
             ])
     }
     

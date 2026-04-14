@@ -183,7 +183,7 @@ struct TherapistProfileView: View {
     @State private var showErrorAlert = false
     @State private var goToChats = false
     
-    @State private var chatRoom = ChatRoom(id: "", clientName: "", lastMessage: "", lastMessageAt: Date(), read: false, sender: "")
+    @State private var chatRoom = ChatRoom(id: "", clientName: "", lastMessage: "", lastMessageAt: Date(), read: false, sender: "", flagged: false)
 
     var body: some View {
         ZStack {
@@ -280,7 +280,7 @@ struct TherapistProfileView: View {
             .getDocuments { snapshot, error in
                 if let doc = snapshot?.documents.first {
                     let data = doc.data()
-                    chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: data["sender"] as? String ?? "")
+                    chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: data["sender"] as? String ?? "", flagged: data["flagged"] as? Bool ?? false)
                     goToChats = true
                 } else {
                     db.collection("provider_chats")
@@ -289,7 +289,7 @@ struct TherapistProfileView: View {
                         .getDocuments { snapshot, error in
                             if let doc = snapshot?.documents.first {
                                 let data = doc.data()
-                                chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender:  data["sender"] as? String ?? "")
+                                chatRoom = ChatRoom(id: doc.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender:  data["sender"] as? String ?? "", flagged: false)
                                 goToChats = true
                             } else {
                                 let docRef = db.collection("provider_chats").document()
@@ -305,7 +305,7 @@ struct TherapistProfileView: View {
                                         showErrorAlert = true
                                         return
                                     } else {
-                                        chatRoom = ChatRoom(id: docRef.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: uid)
+                                        chatRoom = ChatRoom(id: docRef.documentID, clientName: therapist.fullName, lastMessage: "", lastMessageAt: Date(), read: false, sender: uid, flagged: false)
                                         goToChats = true
                                     }
                                 }

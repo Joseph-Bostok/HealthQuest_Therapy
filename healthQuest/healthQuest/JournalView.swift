@@ -83,7 +83,11 @@ struct JournalView: View {
                             NavigationLink(destination: JournalEntryDetailView(patientId: patientId, entry: entry)) {
                                 JournalEntryRow(entry: entry)
                             }
-                            .listRowBackground(Color.clear)
+                            .listRowBackground(
+                                entry.flagged
+                                ? Color.red.opacity(0.08)
+                                : Color.clear
+                            )
                             .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                             .listRowSeparator(.hidden)
                         }
@@ -245,20 +249,18 @@ struct JournalView: View {
 struct JournalEntryRow: View {
     let entry: JournalEntrySummary
     
-    private var rowColor: Color {
-            entry.flagged ? .red : Color("AccentColor")
-        }
+   
         
     var body: some View {
         HStack(spacing: 14) {
             VStack(spacing: 2) {
                 Text(entry.date.formatted(.dateTime.month(.abbreviated)))
                     .font(.caption2.bold())
-                    .foregroundStyle(rowColor)
+                    .foregroundStyle(Color("AccentColor"))
                 Text(entry.date.formatted(.dateTime.day()))
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
-                    .foregroundStyle(rowColor)
+                    .foregroundStyle(Color("AccentColor"))
             }
             .frame(width: 42)
 
@@ -268,7 +270,7 @@ struct JournalEntryRow: View {
                 HStack {
                     Text(entry.date.formatted(.dateTime.weekday(.wide)))
                         .font(.subheadline.bold())
-                        .foregroundStyle(rowColor)
+                        .foregroundStyle(Color("AccentColor"))
                     Spacer()
                     Text(entry.moodEmoji)
                         .font(.title3)
@@ -277,7 +279,7 @@ struct JournalEntryRow: View {
                     Text(entry.dailyThoughts)
                         .lineLimit(2)
                         .font(.caption)
-                        .foregroundStyle(entry.flagged ? .red : .secondary)
+                        .foregroundStyle(Color("AccentColor"))
                 }
             }
         }
@@ -323,9 +325,9 @@ struct JournalEntryDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     
                     if !entry.dailyThoughts.isEmpty {
-                        detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: entry.dailyThoughts)
+                        detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: entry.dailyThoughts, isFlagged: entry.flagged)
                     } else {
-                        detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: "No journal data yet")
+                        detailCard(icon: "text.alignleft", title: "Daily Thoughts", content: "No journal data yet", isFlagged: false)
                     }
                     
                     if session.user?.role == "therapist" {
@@ -334,7 +336,8 @@ struct JournalEntryDetailView: View {
                         detailCard(
                             icon: "heart.text.clipboard",
                             title: "Comments",
-                            content: editableComment.isEmpty ? "Add a comment..." : editableComment
+                            content: editableComment.isEmpty ? "Add a comment..." : editableComment,
+                            isFlagged: false
                         )
                     }
 
@@ -412,7 +415,7 @@ struct JournalEntryDetailView: View {
         
     }
 
-    private func detailCard(icon: String, title: String, content: String) -> some View {
+    private func detailCard(icon: String, title: String, content: String, isFlagged: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(.headline)
@@ -424,7 +427,9 @@ struct JournalEntryDetailView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color.white.opacity(0.95))
+        .background(isFlagged
+                    ? Color.red.opacity(0.1)
+                    : Color.white.opacity(0.95))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     

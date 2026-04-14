@@ -20,6 +20,7 @@ struct ChatRoom: Identifiable, Equatable {
     let lastMessageAt: Date
     let read: Bool
     let sender: String
+    let flagged: Bool
 }
 
 struct PatientChatsView: View {
@@ -52,7 +53,11 @@ struct PatientChatsView: View {
                         NavigationLink(destination: ChatDetailView(chatType: room.id, chatRoom: room)) {
                             ChatRoomRow(room: room, isTherapistAIView: false)
                         }
-                        .listRowBackground(Color.clear)
+                        .listRowBackground(
+                            room.flagged
+                            ? Color.red.opacity(0.2)
+                            : Color.clear
+                        )
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         .listRowSeparator(.hidden)
                     }
@@ -122,7 +127,9 @@ struct PatientChatsView: View {
                         lastMessage: data["lastMessage"] as? String ?? "",
                         lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
                         read: data["read"] as? Bool ?? false,
-                        sender: data["sender"] as? String ?? ""
+                        sender: data["sender"] as? String ?? "",
+                        flagged: data["flagged"] as? Bool ?? false
+                        
                     )
 
                     updateRooms()
@@ -150,7 +157,8 @@ struct PatientChatsView: View {
                         lastMessage: data["lastMessage"] as? String ?? "",
                         lastMessageAt: (data["lastMessageAt"] as? Timestamp)?.dateValue() ?? Date.distantPast,
                         read: data["read"] as? Bool ?? false,
-                        sender: data["sender"] as? String ?? ""
+                        sender: data["sender"] as? String ?? "",
+                        flagged: false
                     )
 
                     updateRooms()

@@ -78,14 +78,16 @@ struct JournalEntryView: View {
                             title: "Daily Thoughts",
                             placeholder: "How are you feeling today? What's on your mind?",
                             text: $dailyThoughts,
-                            isDisabled: false
+                            isDisabled: false,
+                            isFlagged: entryToEdit?.flagged ?? false
                         )
                         journalSection(
                             icon: "heart.text.clipboard",
                             title: "Therapist Comments",
                             placeholder: "Any comments from your therapist will appear here.",
                             text: $comments,
-                            isDisabled: true
+                            isDisabled: true,
+                            isFlagged: false
                         )
                         wellnessSection
                         submitButton
@@ -161,12 +163,14 @@ struct JournalEntryView: View {
         title: String,
         placeholder: String,
         text: Binding<String>,
-        isDisabled: Bool
+        isDisabled: Bool,
+        isFlagged: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
                 .font(.headline)
                 .foregroundStyle(Color("AccentColor"))
+            
             
             ZStack(alignment: .topLeading) {
                 if text.wrappedValue.isEmpty {
@@ -192,7 +196,11 @@ struct JournalEntryView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(16)
-        .background(Color.white.opacity(0.95))
+        .background(
+            isFlagged
+            ? Color.red.opacity(0.1)
+            : Color.white.opacity(0.95)
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     

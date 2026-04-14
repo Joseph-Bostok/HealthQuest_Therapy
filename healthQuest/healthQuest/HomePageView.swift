@@ -245,8 +245,10 @@ struct HomePageView: View {
                 summary2.clients = patients.count
 
                 // ADDED (Joey): fan-out flag counting across all patients
-                var totalFlags = 0
+                var totalJournalFlags = 0
+                var totalChatFlags = 0
                 let group = DispatchGroup()
+                let lock = NSLock()
 
                 for patientId in patients {
                     group.enter()
@@ -255,13 +257,29 @@ struct HomePageView: View {
                         .whereField("flagged", isEqualTo: true)
                         .getDocuments { snap, _ in
                             if let docs = snap?.documents {
-                                totalFlags += docs.count
+                                lock.lock()
+                                totalJournalFlags += docs.count
+                                lock.unlock()
+                            }
+                            group.leave()
+                        }
+
+                    group.enter()
+                    db.collection("ai_chats").document(patientId)
+                        .collection("messages")
+                        .whereField("flagged", isEqualTo: true)
+                        .getDocuments { snap, _ in
+                            if let docs = snap?.documents {
+                                lock.lock()
+                                totalChatFlags += docs.count
+                                lock.unlock()
                             }
                             group.leave()
                         }
                 }
-                //ADDED (Joey): update UI on main thread 
+
                 group.notify(queue: .main) {
+                    let totalFlags = totalChatFlags + totalJournalFlags
                     summary2.flags = totalFlags
                 }
             }
