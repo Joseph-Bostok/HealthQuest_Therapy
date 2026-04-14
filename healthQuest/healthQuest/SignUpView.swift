@@ -405,7 +405,8 @@ struct SignUpView: View {
                     "lastMessage": aiWelcomeMessage,
                     "sender": "AI",
                     "lastMessageAt": Timestamp(),
-                    "read": false
+                    "read": false,
+                    "flagged": false
                 ], forDocument: db.collection("ai_chats").document(uid))
 
                 let therapistWelcomeMessage = "Thank you for creating your account \(firstName)! I am looking forward to getting to know you as my newest patient! Send me a message about anything I may need to know in order to better assist you as you start your HealthQuest Therapy Journey :)"

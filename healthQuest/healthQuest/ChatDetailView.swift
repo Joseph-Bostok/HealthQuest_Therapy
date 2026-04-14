@@ -25,11 +25,12 @@ struct ChatMessage: Identifiable, Codable, Equatable {
 
 struct ChatDetailView: View {
     let chatType: String
-    let chatRoom: ChatRoom
+    @State var chatRoom: ChatRoom
     @EnvironmentObject var session: SessionViewModel
     @State private var messages: [ChatMessage] = []
     @State private var newMessageText: String = ""
     
+    @State private var showSuccessAlert = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
 
@@ -120,10 +121,35 @@ struct ChatDetailView: View {
                     }.padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(Color("AppBackground"))
+                } else {
+                    if chatRoom.flagged {
+                        Button {
+                            removeFlag()
+                        } label: {
+                            Label("Remove Flag", systemImage: "flag.slash")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .foregroundStyle(Color.red)
+                                .background(Color.red.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                    }
                 }
                 
             }
         }.alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("Success", isPresented: $showSuccessAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage)
@@ -134,6 +160,25 @@ struct ChatDetailView: View {
             listenToMessages()
             MARKASREAD()
         }
+    }
+    
+    private func removeFlag() {
+            let db = Firestore.firestore()
+            db.collection("ai_chats")
+            .document(chatRoom.id)
+                .updateData([
+                    "flagged": false
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                    } else {
+                        errorMessage = "Flag Removed"
+                        showSuccessAlert = true
+                        chatRoom.flagged = false
+                    }
+                    }
+
     }
 
     private func listenToMessages() {
@@ -254,7 +299,7 @@ struct ChatDetailView: View {
         }
 
         db.collection("ai_chats").document(uid)
-            .setData([
+            .updateData([
                 "lastMessage":   text,
                 "sender":        uid,
                 "lastMessageAt": Timestamp(),

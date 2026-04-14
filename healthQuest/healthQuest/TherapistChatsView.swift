@@ -53,7 +53,10 @@ struct TherapistChatsView: View {
                         NavigationLink(destination: ChatDetailView(chatType: chatType, chatRoom: room)) {
                             ChatRoomRow(room: room, isTherapistAIView: (chatType == "ai"))
                         }
-                        .listRowBackground(Color.clear)
+                        .listRowBackground(
+                            room.flagged
+                            ? Color.red.opacity(0.2)
+                            : Color.clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         .listRowSeparator(.hidden)
                     }

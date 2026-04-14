@@ -18,6 +18,7 @@ struct TherapistClient: Identifiable, Hashable {
     var fullName: String {
         "\(firstName) \(lastName)"
     }
+    var flagged: Bool
 }
 
 struct JournalReviewView: View {
@@ -58,7 +59,9 @@ struct JournalReviewView: View {
                             destination: JournalView(patientId: client.id)
                         ) {
                             clientRow(client)
-                        }                        .listRowBackground(Color.clear)
+                        }
+                        //TO DO: change color here
+                        .listRowBackground(client.flagged ? Color.red.opacity(0.2) : .clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                         .listRowSeparator(.hidden)
                     }
@@ -185,6 +188,22 @@ struct JournalReviewView: View {
                 loadPatientDocuments(patientIds: patientIds)
             }
     }
+    
+    private func checkforFlags(id: String, completion: @escaping (Bool) -> Void) {
+        db.collection("journals")
+            .document(id)
+            .collection("journalEntries")
+            .whereField("flagged", isEqualTo: true)
+            .getDocuments { snap, error in
+                if error != nil {
+                    completion(false)
+                    return
+                }
+
+                let isFlagged = !(snap?.documents.isEmpty ?? true)
+                completion(isFlagged)
+            }
+    }
 
     private func loadPatientDocuments(patientIds: [String]) {
         let group = DispatchGroup()
@@ -197,27 +216,34 @@ struct JournalReviewView: View {
             db.collection("patients")
                 .document(patientId)
                 .getDocument { snapshot, error in
-                    defer { group.leave() }
-
                     if let error = error {
                         if firstError == nil {
                             firstError = error.localizedDescription
                         }
+                        group.leave()
                         return
                     }
 
-                    guard let data = snapshot?.data() else { return }
+                    guard let data = snapshot?.data() else {
+                        group.leave()
+                        return
+                    }
 
-                    let client = TherapistClient(
+                    var client = TherapistClient(
                         active: data["active"] as? Bool ?? true,
                         id: patientId,
                         firstName: data["firstName"] as? String ?? "",
                         lastName: data["lastName"] as? String ?? "",
                         email: data["email"] as? String ?? "",
-                        bio: data["bio"] as? String ?? ""
+                        bio: data["bio"] as? String ?? "",
+                        flagged: false
                     )
 
-                    loadedClients.append(client)
+                    checkforFlags(id: patientId) { isFlagged in
+                        client.flagged = isFlagged
+                        loadedClients.append(client)
+                        group.leave()
+                    }
                 }
         }
 
@@ -234,4 +260,6 @@ struct JournalReviewView: View {
             }
         }
     }
+    
+    //used chatgpt 5.3 to help w asynchronous logic
 }

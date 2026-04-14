@@ -331,6 +331,25 @@ struct JournalEntryDetailView: View {
                     }
                     
                     if session.user?.role == "therapist" {
+                        if entry.flagged {
+                            Button {
+                                removeFlag()
+                            } label: {
+                                Label("Remove Flag", systemImage: "flag.slash")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .foregroundStyle(Color.red)
+                                    .background(Color.red.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(Color.red.opacity(0.3), lineWidth: 1)
+                                    )
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                        }
                         detailCardEditable(icon: "heart.text.clipboard", title: "Comments", text: $editableComment)
                     } else {
                         detailCard(
@@ -365,6 +384,7 @@ struct JournalEntryDetailView: View {
                                 .foregroundStyle(.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
+                        
                     }
                 }
                 .padding(.horizontal, 20)
@@ -408,11 +428,29 @@ struct JournalEntryDetailView: View {
                         showSuccessAlert = true
                     }
                     }
-            
         }
+
         
-        
-        
+    }
+    
+    private func removeFlag() {
+            let db = Firestore.firestore()
+            db.collection("journals")
+                .document(patientId ?? "")
+                .collection("journalEntries")
+                .document(entry.id)
+                .updateData([
+                    "flagged": false
+                ]) { error in
+                    if let error = error {
+                        errorMessage = error.localizedDescription
+                        showErrorAlert = true
+                    } else {
+                        errorMessage = "Flag Cleared"
+                        showSuccessAlert = true
+                    }
+                    }
+
     }
 
     private func detailCard(icon: String, title: String, content: String, isFlagged: Bool) -> some View {

@@ -20,7 +20,7 @@ struct ChatRoom: Identifiable, Equatable {
     let lastMessageAt: Date
     let read: Bool
     let sender: String
-    let flagged: Bool
+    var flagged: Bool
 }
 
 struct PatientChatsView: View {
