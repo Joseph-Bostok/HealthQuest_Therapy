@@ -204,42 +204,58 @@ struct ChatDetailView: View {
         }
         let text = newMessageText
         if chatType == "ai" {
-            CHECKFORFLAG()
-            newMessageText = ""
-            db.collection("ai_chats").document(uid).collection("messages")
-                .document().setData([
-                    "content": text,
-                    "sender": uid,
-                    "flagged": false,
-                    "riskscore": 0,
-                    "timestamp": Timestamp(),
-                    "read": false
-            ]) { error in
-                if let error = error {
-                    errorMessage = error.localizedDescription
-                    showErrorAlert = true
-                    return
-                } else {
-                    SENDAIPROMPT()
-                }
-            }
-            
-            db.collection("ai_chats").document(uid)
-                .updateData([
-                    "lastMessage": text,
-                    "sender": uid,
-                    "lastMessageAt": Timestamp(),
-                    "read": false
-            ]) { error in
-                if let error = error {
-                    errorMessage = error.localizedDescription
-                    showErrorAlert = true
-                    return
-                } else {
-                    
-                }
+        let text = newMessageText
+        newMessageText = ""
+
+    // CHANGED (Joey): CHECKFORFLAG is now async — it queries callAndResponse,
+    // finds the matching category, and returns the flag status + preloaded response.
+    // the user's message is saved inside the completion so we have the flag value first.
+    CHECKFORFLAG(text) { isFlagged, severity, matchedResponse in
+
+        // CHANGED (Joey): flagged and riskscore now come from the actual
+        // callAndResponse severity instead of being hardcoded
+        let riskscore: Int
+        switch severity {
+        case "critical": riskscore = 3
+        case "high":     riskscore = 2
+        case "medium":   riskscore = 1
+        default:         riskscore = 0
+        }
+
+        db.collection("ai_chats").document(uid).collection("messages")
+            .document().setData([
+                "content":   text,
+                "sender":    uid,
+                "flagged":   isFlagged,       // CHANGED (Joey): was hardcoded false
+                "riskscore": riskscore,        // CHANGED (Joey): was hardcoded 0
+                "timestamp": Timestamp(),
+                "read":      false
+        ]) { error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                return
+            } else {
+                // CHANGED (Joey): pass the preloaded response directly
+                SENDAIPROMPT(responseText: matchedResponse)
             }
         }
+
+        db.collection("ai_chats").document(uid)
+            .updateData([
+                "lastMessage":   text,
+                "sender":        uid,
+                "lastMessageAt": Timestamp(),
+                "read":          false
+        ]) { error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                return
+            }
+        }
+    }
+}
         if chatType == "clients" {
             newMessageText = ""
             db.collection("therapist_chats").document(uid).collection("messages")
@@ -350,21 +366,124 @@ struct ChatDetailView: View {
         }
     }
     
-    private func CHECKFORFLAG() {
-        //TO DO JOEY: check for bad keywords
-        
-        // create an array of keywords that should be flagged
-        // search the newMessageText
-        // set the flag in the message and also in the flags collection
-        //adjust UI accordingly
-    }
+// CHANGED (Joey): CHECKFORFLAG now queries the callAndResponse collection to find
+// a matching keyword category. Returns via completion handler because the Firestore
+// query is async. provides:
+//   - isFlagged: Bool (true if severity is "high" or "critical")
+//   - severity: String 
+//   - matchedResponse: String (the preloaded response)
+private func CHECKFORFLAG(_ text: String, completion: @escaping (Bool, String, String) -> Void) {
+    let lowered = text.lowercased()
+
+    db.collection("callAndResponse")
+        .getDocuments { snapshot, error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                return
+            }
+
+            guard let docs = snapshot?.documents else { return }
+
+            // ADDED (Joey): track the fallback doc ("no-keywords-found") separately
+            var fallbackResponse = "I'm here to listen. What's on your mind today?"
+            var fallbackSeverity = "none"
+
+            // ADDED (Joey): iterate through each callAndResponse document
+            // looking for a keyword match in the user's message
+            for doc in docs {
+                let data = doc.data()
+
+                // Handle the fallback/default document
+                if doc.documentID == "no-keywords-found" {
+                    fallbackResponse = data["response"] as? String ?? fallbackResponse
+                    fallbackSeverity = data["severity"] as? String ?? "none"
+                    continue
+                }
+
+                // ADDED (Joey): the collection uses both "keywords" (plural) and
+                // "keyword" (singular) as field names across different documents,
+                // so we check for both
+                let keywords: [String]
+                if let kw = data["keywords"] as? [String] {
+                    keywords = kw
+                } else if let kw = data["keyword"] as? [String] {
+                    keywords = kw
+                } else {
+                    continue
+                }
+
+                // ADDED (Joey): check if any keyword from this doc appears in the message
+                for keyword in keywords {
+                    if keyword.isEmpty { continue }
+                    if lowered.contains(keyword.lowercased()) {
+                        let severity = data["severity"] as? String ?? "none"
+                        let response = data["response"] as? String ?? fallbackResponse
+                        let isFlagged = (severity == "high" || severity == "critical")
+
+                        // ADDED (Joey): if flagged, write to the "flags" collection
+                        // so the therapist dashboard can surface it
+                        if isFlagged, let uid = session.user?.uid {
+                            db.collection("flags").addDocument(data: [
+                                "patientId": uid,
+                                "source":    "ai_chat",
+                                "category":  data["category"] as? String ?? "unknown",
+                                "keyword":   keyword,
+                                "content":   text,
+                                "severity":  severity,
+                                "timestamp": Timestamp(),
+                                "resolved":  false
+                            ])
+                        }
+
+                        completion(isFlagged, severity, response)
+                        return  // stop at first match
+                    }
+                }
+            }
+
+            // ADDED (Joey): no keyword matched — use the fallback document
+            let isFlagged = (fallbackSeverity == "high" || fallbackSeverity == "critical")
+            completion(isFlagged, fallbackSeverity, fallbackResponse)
+        }
+}
     
-    private func SENDAIPROMPT() {
-        //TO DO JOEY: send logic for AI reply
-        
-        //check the users input (newMessageText) for any key words present in
-        //the callAndResponse firebase collection, then create a new message from the AI and send
-        //to user, going to default response if no keyword is found
+// CHANGED (Joey): SENDAIPROMPT no longer queries callAndResponse itself.
+// It receives the preloaded response from CHECKFORFLAG and saves it as
+// an AI message in the conversation.
+    private func SENDAIPROMPT(responseText: String) {
+        guard let uid = session.user?.uid else { return }
+    
+        // ADDED (Joey): save the preloaded response as a new AI message
+        let aiMessageData: [String: Any] = [
+            "content":   responseText,
+            "sender":    "AI",
+            "flagged":   false,
+            "riskscore": 0,
+            "timestamp": Timestamp(),
+            "read":      false
+        ]
+
+    db.collection("ai_chats")
+        .document(uid)
+        .collection("messages")
+        .addDocument(data: aiMessageData) { error in
+            if let error = error {
+                errorMessage = error.localizedDescription
+                showErrorAlert = true
+                }
+            }
+
+    // ADDED (Joey): update chat room metadata so the chat list
+    // shows the AI's reply as the most recent message
+    db.collection("ai_chats")
+        .document(uid)
+        .updateData([
+            "lastMessage":   responseText,
+            "sender":        "AI",
+            "lastMessageAt": Timestamp(),
+            "read":          false
+            ])
     }
     
     private func MARKASREAD() {
@@ -384,9 +503,9 @@ struct ChatDetailView: View {
                             return
                         } else {
                             newMessageText = ""
+                            }
                         }
                     }
-                }
                 if chatType == "clients" {
                     db.collection("therapist_chats").document(uid)
                         .updateData([
@@ -398,9 +517,9 @@ struct ChatDetailView: View {
                             return
                         } else {
                             newMessageText = ""
+                            }
                         }
                     }
-                }
             } else {
                 if chatType == "clients" {
                     db.collection("therapist_chats").document(chatRoom.id)
@@ -413,9 +532,9 @@ struct ChatDetailView: View {
                             return
                         } else {
                             newMessageText = ""
+                            }
                         }
                     }
-                }
                 if chatType == "providers" {
                     db.collection("provider_chats").document(chatRoom.id)
                         .updateData([
@@ -427,15 +546,15 @@ struct ChatDetailView: View {
                             return
                         } else {
                             newMessageText = ""
+                            }
                         }
                     }
                 }
             }
+            
         }
-        
     }
-}
-
+    
 
 struct MessageBubble: View {
     let message: ChatMessage
