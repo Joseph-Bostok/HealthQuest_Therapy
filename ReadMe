@@ -1,0 +1,7 @@
+To run this code:
+
+- Download X code, swift UI, and the iOS 26.1 Simulator (26.3 simulator has a known bug that prevents emojis from displaying correctly, Apple is still working to resolve this.
+
+- Open the project in Xcode and select the iPhone 17 simulator option from the drop down, and click the play button
+
+- if the backend does not connect properly please email one of our team members for the updated google plist config file, firebase has strict rules to use this config file and sometimes the files get corrupted if it is placed in a new env
