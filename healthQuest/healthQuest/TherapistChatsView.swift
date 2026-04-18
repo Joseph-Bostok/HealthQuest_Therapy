@@ -41,9 +41,9 @@ struct TherapistChatsView: View {
                         Image(systemName: "bubble.left.and.bubble.right")
                             .font(.system(size: 85))
                             .foregroundStyle(.secondary)
-                        Text("No clients yet")
+                        Text("No chats yet")
                             .font(.title2.bold())
-                        Text("Once patients use your referral code,\ntheir chats will appear here.")
+                        Text(chatType + " chats will appear here as they are created")
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.secondary)
                     }

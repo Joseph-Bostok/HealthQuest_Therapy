@@ -8,7 +8,7 @@ struct RootView: View {
             if session.isLoading {
                 ProgressView("Loading...")
             } else if let user = session.user {
-                NavigationBarView(firstName: user.firstName)
+                NavigationBarView()
             } else {
                 LoginView()
             }

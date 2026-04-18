@@ -33,8 +33,8 @@ class SessionViewModel: ObservableObject {
             guard let self = self else { return }
 
             if let document = document, document.exists {
-                let firstName = document.get("firstName") as? String ?? ""
-                let lastName = document.get("lastName") as? String ?? ""
+                var firstName = document.get("firstName") as? String ?? ""
+                var lastName = document.get("lastName") as? String ?? ""
                 let email = document.get("email") as? String ?? ""
 
                 self.user = AppUser(
@@ -51,8 +51,8 @@ class SessionViewModel: ObservableObject {
                     guard let self = self else { return }
 
                     if let document = document, document.exists {
-                        let firstName = document.get("firstName") as? String ?? ""
-                        let lastName = document.get("lastName") as? String ?? ""
+                        var firstName = document.get("firstName") as? String ?? ""
+                        var lastName = document.get("lastName") as? String ?? ""
                         let email = document.get("email") as? String ?? ""
 
                         self.user = AppUser(

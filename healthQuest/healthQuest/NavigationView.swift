@@ -10,7 +10,6 @@
 import SwiftUI
 
 struct NavigationBarView: View {
-    let firstName: String
     @EnvironmentObject var session: SessionViewModel
 
     var body: some View {

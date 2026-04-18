@@ -372,6 +372,14 @@ struct ProfileEditView: View {
                                 errorMessage = error.localizedDescription
                                 showErrorAlert = true
                             } else {
+                                if var updatedUser = session.user {
+                                    updatedUser.uid = uid
+                                    updatedUser.firstName = firstName
+                                    updatedUser.lastName = lastName
+                                    updatedUser.email = email
+                                    updatedUser.role = role
+                                    session.user = updatedUser
+                                }
                                 withAnimation { saveSuccess = true }
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                                     withAnimation { saveSuccess = false }
@@ -395,6 +403,14 @@ struct ProfileEditView: View {
                                 errorMessage = error.localizedDescription
                                 showErrorAlert = true
                             } else {
+                                if var updatedUser = session.user {
+                                    updatedUser.uid = uid 
+                                    updatedUser.firstName = firstName
+                                    updatedUser.lastName = lastName
+                                    updatedUser.email = email
+                                    updatedUser.role = role
+                                    session.user = updatedUser
+                                }
                                 withAnimation { saveSuccess = true }
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                                     withAnimation { saveSuccess = false }
@@ -420,6 +436,14 @@ struct ProfileEditView: View {
                         errorMessage = error.localizedDescription
                         showErrorAlert = true
                     } else {
+                        if var updatedUser = session.user {
+                            updatedUser.uid = uid
+                            updatedUser.firstName = firstName
+                            updatedUser.lastName = lastName
+                            updatedUser.email = email
+                            updatedUser.role = role
+                            session.user = updatedUser
+                        }
                         withAnimation { saveSuccess = true }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                             withAnimation { saveSuccess = false }
