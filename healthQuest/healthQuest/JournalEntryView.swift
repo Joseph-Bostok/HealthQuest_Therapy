@@ -61,6 +61,7 @@ struct JournalEntryView: View {
     
     //optional journal entry summary for existing entries
     let entryToEdit: JournalEntrySummary?
+    private let isUITesting = ProcessInfo.processInfo.arguments.contains("UI-TESTING")
     init(entryToEdit: JournalEntrySummary? = nil) {
         self.entryToEdit = entryToEdit
     }
@@ -186,6 +187,7 @@ struct JournalEntryView: View {
                     .scrollContentBackground(.hidden)
                     .padding(6)
                     .disabled(isDisabled)
+                    .accessibilityIdentifier(title == "Daily Thoughts" ? "dailyThoughtsEditor" : "therapistCommentsEditor")
             }
             .background(fieldBg)
             .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -368,9 +370,35 @@ struct JournalEntryView: View {
                 Text(format(value.wrappedValue))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(Color("AccentColor"))
+                    .accessibilityIdentifier("\(title.lowercased())Value")
             }
-            Slider(value: value, in: range, step: step)
-                .tint(Color("AccentColor"))
+            if isUITesting {
+                HStack(spacing: 12) {
+                    Button {
+                        value.wrappedValue = max(range.lowerBound, value.wrappedValue - step)
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title3)
+                    }
+                    .accessibilityIdentifier("\(title.lowercased())Decrement")
+
+                    Slider(value: value, in: range, step: step)
+                        .tint(Color("AccentColor"))
+                        .accessibilityIdentifier("\(title.lowercased())Slider")
+
+                    Button {
+                        value.wrappedValue = min(range.upperBound, value.wrappedValue + step)
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3)
+                    }
+                    .accessibilityIdentifier("\(title.lowercased())Increment")
+                }
+            } else {
+                Slider(value: value, in: range, step: step)
+                    .tint(Color("AccentColor"))
+                    .accessibilityIdentifier("\(title.lowercased())Slider")
+            }
         }
     }
     
