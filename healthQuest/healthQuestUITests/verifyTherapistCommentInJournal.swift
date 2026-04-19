@@ -5,12 +5,12 @@
 //  Created by Alexander Mesa on 4/17/26.
 //  Codex AI Generated This Code from reading these test cases in Test Cases Doc file: Therapist Adding Comment to Client Journal Entry
 
-import XCTest
-
 /* Preconditions:
     Run the two tests in verifyClientJournalEntry before this test
     The most recent journal entry from the client should be empty
 */
+
+import XCTest
 
 final class verifyTherapistCommentInJournal: XCTestCase {
 

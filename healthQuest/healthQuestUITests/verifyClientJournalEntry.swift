@@ -5,6 +5,9 @@
 //  Created by Alexander Mesa on 4/16/26.
 //  Codex AI Generated This Code from reading these test cases in Test Cases Doc file: Client Submitting and Editing Journal
 
+// Precondition: Make sure there aren't any journal entries of that client from today
+// Condition: Run testJournalSubmit() before testJournalEdit()
+
 import XCTest
 
 // Note: Swift UI struggles to scroll to the right value, so buttons were added only in this test instance to choose the right values in the journal entries

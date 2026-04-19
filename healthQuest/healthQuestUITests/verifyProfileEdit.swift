@@ -5,8 +5,6 @@
 //  Created by Alexander Mesa on 4/17/26.
 //  Codex AI Generated This Code from reading these test cases in Test Cases Doc file: Client Editing Profile and Therapist Editing Profile
 
-import XCTest
-
 /* Preconditions:
     Client Profile:
         Name: Jane Doe
@@ -18,6 +16,8 @@ import XCTest
         Phone: 123-456-7890
 
 */
+
+import XCTest
 
 final class verifyProfileEdit: XCTestCase {
 
